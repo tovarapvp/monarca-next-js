@@ -6,8 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/hooks/use-toast"
 import Image from "next/image"
 import Link from "next/link"
-import { useState } from "react"
-import { ChevronLeft, ChevronRight, Mail, MessageCircle, ShoppingCart } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ChevronLeft, ChevronRight, Mail, MessageCircle, ShoppingCart, Menu } from "lucide-react"
 
 // Mock product data - in a real app this would come from an API
 const productData = {
@@ -41,18 +41,58 @@ const relatedProducts = [
   { id: 5, name: "Emerald Pendant", price: 449, image: "/luxury-jewelry.png" },
 ]
 
+interface CartItem {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  quantity: number;
+}
+
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
   const product = productData[1] // In a real app, use params.id to fetch the right product
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
-  const [isZoomed, setIsZoomed] = useState(false)
   const [cartCount, setCartCount] = useState(0)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
+  useEffect(() => {
+    // Load cart from localStorage to set initial cart count
+    const savedCart = localStorage.getItem("monarca-cart")
+    if (savedCart) {
+      const cartItems: CartItem[] = JSON.parse(savedCart)
+      setCartCount(cartItems.reduce((acc, item) => acc + item.quantity, 0))
+    }
+
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+  }, [isMobileMenuOpen])
 
   if (!product) {
     return <div>Product not found</div>
   }
 
   const handleAddToCart = () => {
-    setCartCount((prev) => prev + 1)
+    const savedCart = localStorage.getItem("monarca-cart")
+    let cartItems: CartItem[] = savedCart ? JSON.parse(savedCart) : []
+
+    const existingItemIndex = cartItems.findIndex((item) => item.id === product.id)
+
+    if (existingItemIndex > -1) {
+      cartItems[existingItemIndex].quantity += 1
+    } else {
+      cartItems.push({ ...product, quantity: 1, image: product.images[0] })
+    }
+
+    localStorage.setItem("monarca-cart", JSON.stringify(cartItems))
+    setCartCount(cartItems.reduce((acc, item) => acc + item.quantity, 0))
+
     toast({
       title: "Added to Cart",
       description: `${product.name} has been added to your cart.`,
@@ -74,30 +114,38 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/monarca-logo.png" alt="MONARCA" width={40} height={40} className="h-10 w-auto" />
-            <span className="text-xl font-serif font-bold text-foreground">MONARCA</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-8">
-            <Link href="/products" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              All Products
-            </Link>
-            <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              About
-            </a>
-            <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Contact
-            </a>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm md:hidden">
+          <div className="fixed left-0 top-0 h-full w-3/4 max-w-sm border-r border-border bg-background p-6">
+            <div className="flex items-center justify-between">
+              <Link href="/" className="flex items-center gap-2">
+                <Image src="/monarca-logo.png" alt="MONARCA" width={32} height={32} />
+                <span className="text-lg font-serif font-bold">MONARCA</span>
+              </Link>
+              <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
+            <nav className="mt-8 flex flex-col gap-6">
+              <Link
+                href="/products"
+                className="text-lg font-medium hover:text-primary transition-colors"
+                onClick={toggleMobileMenu}
+              >
+                All Products
+              </Link>
+              <a href="#" className="text-lg font-medium hover:text-primary transition-colors" onClick={toggleMobileMenu}>
+                About
+              </a>
+              <a href="#" className="text-lg font-medium hover:text-primary transition-colors" onClick={toggleMobileMenu}>
+                Contact
+              </a>
+            </nav>
           </div>
-          <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-            <ShoppingCart className="h-4 w-4" />
-            Cart ({cartCount})
-          </Button>
         </div>
-      </nav>
+      )}
 
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
@@ -118,27 +166,21 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           {/* Left Column - Image Gallery */}
           <div className="space-y-4">
             {/* Main Image */}
-            <div
-              className="relative aspect-square overflow-hidden rounded-lg bg-muted cursor-zoom-in"
-              onMouseEnter={() => setIsZoomed(true)}
-              onMouseLeave={() => setIsZoomed(false)}
-            >
+            <div className="relative aspect-square overflow-hidden rounded-lg bg-muted group">
               <img
                 src={product.images[selectedImageIndex] || "/placeholder.svg"}
                 alt={product.name}
-                className={`h-full w-full object-cover transition-transform duration-300 ${
-                  isZoomed ? "scale-150" : "scale-100"
-                }`}
+                className="h-full w-full object-cover transition-transform duration-300 lg:group-hover:scale-125"
               />
             </div>
 
             {/* Thumbnail Gallery */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-2">
               {product.images.map((image, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImageIndex(index)}
-                  className={`aspect-square w-20 overflow-hidden rounded-lg border-2 transition-colors ${
+                  className={`aspect-square w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${
                     selectedImageIndex === index ? "border-primary" : "border-border hover:border-primary/50"
                   }`}
                 >
@@ -171,7 +213,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                 Add to Cart
               </Button>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   variant="outline"
                   size="lg"

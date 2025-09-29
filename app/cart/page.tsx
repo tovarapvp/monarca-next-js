@@ -84,9 +84,9 @@ export default function CartPage() {
           {/* Left Column - Product List (70% width) */}
           <div className="lg:col-span-7 space-y-4">
             {cartItems.map((item) => (
-              <div key={item.id} className="bg-white rounded-lg p-6 shadow-sm">
-                <div className="flex items-center gap-4">
-                  <div className="relative w-24 h-24 flex-shrink-0">
+              <div key={item.id} className="bg-white rounded-lg p-4 sm:p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0">
                     <Image
                       src={item.image || "/placeholder.svg"}
                       alt={item.name}
@@ -96,32 +96,35 @@ export default function CartPage() {
                   </div>
 
                   <div className="flex-grow">
-                    <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
+                    <h3 className="font-semibold text-gray-900 mb-1 text-lg">{item.name}</h3>
                     {item.variant && <p className="text-sm text-gray-500 mb-2">Color: {item.variant}</p>}
-                    <p className="text-orange-600 font-semibold text-lg">${item.price}</p>
+                    <p className="text-orange-600 font-semibold text-xl">${item.price}</p>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 my-3 sm:my-0">
                     <button
                       onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                      className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                    <span className="w-10 text-center font-semibold text-lg">{item.quantity}</span>
                     <button
                       onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                      className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
 
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">${(item.price * item.quantity).toFixed(2)}</p>
+                  <div className="text-right flex-shrink-0 w-24">
+                    <p className="font-semibold text-gray-900 text-lg">${(item.price * item.quantity).toFixed(2)}</p>
                   </div>
 
-                  <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500 p-1">
+                  <button
+                    onClick={() => removeItem(item.id)}
+                    className="text-gray-400 hover:text-red-500 p-1 absolute top-2 right-2 sm:static"
+                  >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -151,8 +154,8 @@ export default function CartPage() {
               </div>
 
               <div className="space-y-3">
-                <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 text-lg">
-                  Finalizar Compra / Proceed to Checkout
+                <Button asChild size="lg" className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 text-lg">
+                  <Link href="/checkout">Finalizar Compra / Proceed to Checkout</Link>
                 </Button>
 
                 <Button variant="outline" asChild className="w-full bg-transparent">

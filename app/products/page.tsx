@@ -2,11 +2,12 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Slider } from "@/components/ui/slider"
 import Image from "next/image"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { Filter, X } from "lucide-react"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { ProductFilters } from "@/components/product-filters"
 
 const products = [
   {
@@ -61,24 +62,11 @@ const products = [
   },
 ]
 
-const categories = [
-  { id: "necklaces", label: "Necklaces" },
-  { id: "earrings", label: "Earrings" },
-  { id: "bracelets", label: "Bracelets" },
-  { id: "rings", label: "Rings" },
-]
-
-const colors = [
-  { id: "gold", label: "Gold", color: "#FFD700" },
-  { id: "silver", label: "Silver", color: "#C0C0C0" },
-  { id: "rose-gold", label: "Rose Gold", color: "#E8B4A0" },
-  { id: "pearl", label: "Pearl", color: "#F8F8FF" },
-]
-
 export default function ProductsPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedColors, setSelectedColors] = useState<string[]>([])
   const [priceRange, setPriceRange] = useState([0, 600])
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false)
 
   const filteredProducts = products.filter((product) => {
     const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(product.category)
@@ -87,125 +75,77 @@ export default function ProductsPage() {
     return categoryMatch && colorMatch && priceMatch
   })
 
-  const handleCategoryChange = (categoryId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedCategories([...selectedCategories, categoryId])
-    } else {
-      setSelectedCategories(selectedCategories.filter((id) => id !== categoryId))
-    }
+  const handleClearFilters = () => {
+    setSelectedCategories([])
+    setSelectedColors([])
+    setPriceRange([0, 600])
+    setIsFilterMenuOpen(false) // Close the sheet after clearing filters
   }
 
-  const handleColorChange = (colorId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedColors([...selectedColors, colorId])
+  useEffect(() => {
+    if (isFilterMenuOpen) {
+      document.body.style.overflow = "hidden"
     } else {
-      setSelectedColors(selectedColors.filter((id) => id !== colorId))
+      document.body.style.overflow = ""
     }
-  }
+  }, [isFilterMenuOpen])
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/monarca-logo.png" alt="MONARCA" width={40} height={40} className="h-10 w-auto" />
-            <span className="text-xl font-serif font-bold text-foreground">MONARCA</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-8">
-            <Link href="/products" className="text-sm font-medium text-primary">
-              All Products
-            </Link>
-            <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              About
-            </a>
-            <a href="#" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              Contact
-            </a>
-          </div>
-          <Button variant="outline" size="sm">
-            Cart (0)
-          </Button>
-        </div>
-      </nav>
-
       <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-8">
+        <div className="lg:flex lg:gap-8">
           {/* Left Column - Filters (25% width) */}
-          <div className="w-1/4 space-y-8">
-            <div>
-              <h2 className="mb-6 text-2xl font-serif font-bold text-foreground">Filter By</h2>
-
-              {/* Category Filter */}
-              <div className="mb-8">
-                <h3 className="mb-4 text-lg font-semibold text-foreground">Category</h3>
-                <div className="space-y-3">
-                  {categories.map((category) => (
-                    <div key={category.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={category.id}
-                        checked={selectedCategories.includes(category.id)}
-                        onCheckedChange={(checked) => handleCategoryChange(category.id, checked as boolean)}
-                      />
-                      <label htmlFor={category.id} className="text-sm font-medium text-foreground cursor-pointer">
-                        {category.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Price Filter */}
-              <div className="mb-8">
-                <h3 className="mb-4 text-lg font-semibold text-foreground">Price</h3>
-                <div className="space-y-4">
-                  <Slider
-                    value={priceRange}
-                    onValueChange={setPriceRange}
-                    max={600}
-                    min={0}
-                    step={10}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>${priceRange[0]}</span>
-                    <span>${priceRange[1]}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Color Filter */}
-              <div className="mb-8">
-                <h3 className="mb-4 text-lg font-semibold text-foreground">Color</h3>
-                <div className="space-y-3">
-                  {colors.map((color) => (
-                    <div key={color.id} className="flex items-center space-x-3">
-                      <Checkbox
-                        id={color.id}
-                        checked={selectedColors.includes(color.id)}
-                        onCheckedChange={(checked) => handleColorChange(color.id, checked as boolean)}
-                      />
-                      <div
-                        className="h-4 w-4 rounded-full border border-border"
-                        style={{ backgroundColor: color.color }}
-                      />
-                      <label htmlFor={color.id} className="text-sm font-medium text-foreground cursor-pointer">
-                        {color.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+          <div className="hidden lg:block lg:w-1/4">
+            <ProductFilters
+              selectedCategories={selectedCategories}
+              setSelectedCategories={setSelectedCategories}
+              selectedColors={selectedColors}
+              setSelectedColors={setSelectedColors}
+              priceRange={priceRange}
+              setPriceRange={setPriceRange}
+            />
           </div>
 
           {/* Right Column - Products (75% width) */}
-          <div className="w-3/4">
-            <div className="mb-8">
-              <h1 className="text-4xl font-serif font-bold text-foreground">All Products</h1>
-              <p className="mt-2 text-muted-foreground">
-                Showing {filteredProducts.length} of {products.length} products
-              </p>
+          <div className="w-full lg:w-3/4">
+            <div className="mb-8 flex justify-between items-center">
+              <div>
+                <h1 className="text-4xl font-serif font-bold text-foreground">All Products</h1>
+                <p className="mt-2 text-muted-foreground">
+                  Showing {filteredProducts.length} of {products.length} products
+                </p>
+              </div>
+              {/* Mobile Filter Button */}
+              <Sheet open={isFilterMenuOpen} onOpenChange={setIsFilterMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="lg:hidden bg-transparent"
+                  >
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filter
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[300px] sm:w-[400px] p-6">
+                  <SheetHeader>
+                    <SheetTitle className="text-2xl font-serif font-bold">Filter Products</SheetTitle>
+                  </SheetHeader>
+                  <div className="py-6">
+                    <ProductFilters
+                      selectedCategories={selectedCategories}
+                      setSelectedCategories={setSelectedCategories}
+                      selectedColors={selectedColors}
+                      setSelectedColors={setSelectedColors}
+                      priceRange={priceRange}
+                      setPriceRange={setPriceRange}
+                      onApplyFilters={() => setIsFilterMenuOpen(false)} // Close sheet on apply
+                    />
+                    <Button onClick={handleClearFilters} variant="outline" className="w-full mt-4">
+                      Clear All Filters
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
 
             {/* Product Grid */}
@@ -242,11 +182,7 @@ export default function ProductsPage() {
                 <Button
                   variant="outline"
                   className="mt-4 bg-transparent"
-                  onClick={() => {
-                    setSelectedCategories([])
-                    setSelectedColors([])
-                    setPriceRange([0, 600])
-                  }}
+                  onClick={handleClearFilters}
                 >
                   Clear All Filters
                 </Button>

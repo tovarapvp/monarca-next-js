@@ -5,11 +5,21 @@ import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image"
 import { ChevronLeft, ChevronRight, Menu, Star, Users, Award, Shield, ChevronDown, Globe } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+
+interface CartItem {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  quantity: number;
+}
 
 export default function Home() {
   const [currentLanguage, setCurrentLanguage] = useState("ENG")
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [cartCount, setCartCount] = useState(0)
 
   const languages = [
     { code: "ENG", label: "English" },
@@ -20,6 +30,10 @@ export default function Home() {
     setIsLanguageDropdownOpen(!isLanguageDropdownOpen)
   }
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+  }
+
   const selectLanguage = (langCode: string) => {
     setCurrentLanguage(langCode)
     setIsLanguageDropdownOpen(false)
@@ -27,94 +41,89 @@ export default function Home() {
     console.log("[v0] Language switched to:", langCode)
   }
 
+  useEffect(() => {
+    // Load cart from localStorage to set initial cart count
+    const savedCart = localStorage.getItem("monarca-cart")
+    if (savedCart) {
+      const cartItems: CartItem[] = JSON.parse(savedCart)
+      setCartCount(cartItems.reduce((acc, item) => acc + item.quantity, 0))
+    }
+
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+  }, [isMobileMenuOpen])
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <Image src="/monarca-logo.png" alt="MONARCA" width={40} height={40} className="h-10 w-auto" />
-            <span className="text-xl font-serif font-bold text-foreground">MONARCA</span>
-          </div>
-          <div className="hidden md:flex items-center gap-8">
-            <Link
-              href="/products?category=necklaces"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              Necklaces
-            </Link>
-            <Link
-              href="/products?category=earrings"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              Earrings
-            </Link>
-            <Link
-              href="/products?category=bracelets"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              Bracelets
-            </Link>
-            <a href="#about" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-              About
-            </a>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm">
-              Cart (0)
-            </Button>
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleLanguageDropdown}
-                className="flex items-center gap-1 text-sm font-medium"
-              >
-                <Globe className="h-4 w-4" />
-                {currentLanguage}
-                <ChevronDown className="h-3 w-3" />
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm md:hidden">
+          <div className="fixed left-0 top-0 h-full w-3/4 max-w-sm border-r border-border bg-background p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Image src="/monarca-logo.png" alt="MONARCA" width={32} height={32} />
+                <span className="text-lg font-serif font-bold">MONARCA</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={toggleMobileMenu}>
+                <ChevronRight className="h-5 w-5" />
               </Button>
-              {isLanguageDropdownOpen && (
-                <div className="absolute right-0 top-full mt-1 w-32 bg-background border border-border rounded-md shadow-lg z-50">
-                  {languages.map((lang) => (
-                    <button
-                      key={lang.code}
-                      onClick={() => selectLanguage(lang.code)}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors ${
-                        currentLanguage === lang.code ? "bg-muted font-medium" : ""
-                      }`}
-                    >
-                      {lang.code} - {lang.label}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
-            <Button variant="ghost" size="sm" className="md:hidden">
-              <Menu className="h-4 w-4" />
-            </Button>
+            <nav className="mt-8 flex flex-col gap-6">
+              <Link
+                href="/products?category=necklaces"
+                className="text-lg font-medium hover:text-primary transition-colors"
+                onClick={toggleMobileMenu}
+              >
+                Necklaces
+              </Link>
+              <Link
+                href="/products?category=earrings"
+                className="text-lg font-medium hover:text-primary transition-colors"
+                onClick={toggleMobileMenu}
+              >
+                Earrings
+              </Link>
+              <Link
+                href="/products?category=bracelets"
+                className="text-lg font-medium hover:text-primary transition-colors"
+                onClick={toggleMobileMenu}
+              >
+                Bracelets
+              </Link>
+              <a
+                href="#about"
+                className="text-lg font-medium hover:text-primary transition-colors"
+                onClick={toggleMobileMenu}
+              >
+                About
+              </a>
+            </nav>
           </div>
         </div>
-      </nav>
+      )}
 
       {/* Hero Section */}
-      <section className="relative h-[80vh] overflow-hidden">
+      <section className="relative h-[calc(100vh-4rem)] min-h-[500px] overflow-hidden">
         <div className="absolute inset-0">
           <img
             src="/elegant-model-gold-jewelry.png"
             alt="Model wearing MONARCA jewelry"
             className="h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-black/30"></div>
+          <div className="absolute inset-0 bg-black/40"></div>
         </div>
         <div className="relative z-10 flex h-full items-center justify-center text-center text-white">
           <div className="max-w-2xl px-4 animate-fade-in">
-            <h1 className="mb-4 text-5xl font-serif font-bold md:text-6xl">Transform Your Style</h1>
-            <p className="mb-8 text-xl font-light">Discover MONARCA</p>
+            <h1 className="mb-4 text-4xl font-serif font-bold sm:text-5xl md:text-6xl">Transform Your Style</h1>
+            <p className="mb-8 text-lg font-light md:text-xl">Discover MONARCA</p>
             <Link href="/products">
               <Button
                 size="lg"
-                className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-105 h-11 px-6 text-base sm:h-12 sm:px-8 sm:text-lg"
               >
                 Shop New Arrivals
               </Button>
@@ -197,8 +206,8 @@ export default function Home() {
       {/* New Arrivals */}
       <section className="bg-muted py-20 px-4">
         <div className="container mx-auto max-w-6xl">
-          <div className="mb-12 flex items-center justify-between">
-            <h2 className="text-4xl font-serif font-bold text-foreground">New Arrivals</h2>
+          <div className="mb-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h2 className="text-3xl sm:text-4xl font-serif font-bold text-foreground text-center sm:text-left">New Arrivals</h2>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -282,12 +291,8 @@ export default function Home() {
                   <span className="text-muted-foreground">Lifetime craftsmanship guarantee</span>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="lg"
-                className="hover:bg-primary hover:text-primary-foreground transition-colors bg-transparent"
-              >
-                Read Our Story
+              <Button asChild variant="outline" size="lg" className="hover:bg-primary hover:text-primary-foreground transition-colors bg-transparent">
+                <Link href="/about">Read Our Story</Link>
               </Button>
             </div>
           </div>
@@ -373,15 +378,15 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-background py-12 px-4">
-        <div className="container mx-auto max-w-6xl">
-          <div className="grid gap-8 md:grid-cols-4">
-            <div>
+      <footer className="border-t border-border bg-background py-12 px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto max-w-7xl">
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="sm:col-span-2 lg:col-span-1">
               <div className="mb-4 flex items-center gap-2">
                 <Image src="/monarca-logo.png" alt="MONARCA" width={32} height={32} className="h-8 w-auto" />
                 <span className="text-xl font-serif font-bold text-foreground">MONARCA</span>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-4 max-w-xs">
                 Transform your style with luxury jewelry crafted with passion and precision.
               </p>
               <div className="flex items-center gap-1">
@@ -393,7 +398,7 @@ export default function Home() {
             </div>
             <div>
               <h3 className="mb-4 font-semibold text-foreground">Shop</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-3 text-sm text-muted-foreground">
                 <li>
                   <Link href="/products?category=necklaces" className="hover:text-primary transition-colors">
                     Necklaces
@@ -418,7 +423,7 @@ export default function Home() {
             </div>
             <div>
               <h3 className="mb-4 font-semibold text-foreground">Support</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-3 text-sm text-muted-foreground">
                 <li>
                   <a href="#" className="hover:text-primary transition-colors">
                     Contact Us
@@ -443,7 +448,7 @@ export default function Home() {
             </div>
             <div>
               <h3 className="mb-4 font-semibold text-foreground">Connect</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-3 text-sm text-muted-foreground">
                 <li>
                   <a href="#" className="hover:text-primary transition-colors">
                     Instagram
@@ -467,17 +472,14 @@ export default function Home() {
               </ul>
             </div>
           </div>
-          <div className="mt-8 border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-muted-foreground">© 2024 MONARCA. All rights reserved.</p>
-            <div className="flex gap-6 text-sm text-muted-foreground">
+          <div className="mt-10 border-t border-border pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p className="text-sm text-muted-foreground text-center sm:text-left">© 2024 MONARCA. All rights reserved.</p>
+            <div className="flex gap-4 sm:gap-6 text-sm text-muted-foreground">
               <a href="#" className="hover:text-primary transition-colors">
                 Privacy Policy
               </a>
               <a href="#" className="hover:text-primary transition-colors">
                 Terms of Service
-              </a>
-              <a href="#" className="hover:text-primary transition-colors">
-                Shipping Policy
               </a>
             </div>
           </div>
