@@ -4,13 +4,14 @@
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Slider } from "@/components/ui/slider"
-import { useState } from "react"
+import { Product } from "@/lib/products"
 
 interface ProductFiltersProps {
+  products: Product[];
   selectedCategories: string[];
   setSelectedCategories: (categories: string[]) => void;
-  selectedColors: string[];
-  setSelectedColors: (colors: string[]) => void;
+  selectedVariants: { [key: string]: string[] };
+  setSelectedVariants: (variants: { [key: string]: string[] }) => void;
   priceRange: number[];
   setPriceRange: (range: number[]) => void;
   onApplyFilters?: () => void; // Optional: for mobile sheet to close
@@ -23,18 +24,12 @@ const categories = [
   { id: "rings", label: "Rings" },
 ]
 
-const colors = [
-  { id: "gold", label: "Gold", color: "#FFD700" },
-  { id: "silver", label: "Silver", color: "#C0C0C0" },
-  { id: "rose-gold", label: "Rose Gold", color: "#E8B4A0" },
-  { id: "pearl", label: "Pearl", color: "#F8F8FF" },
-]
-
 export function ProductFilters({
+  products,
   selectedCategories,
   setSelectedCategories,
-  selectedColors,
-  setSelectedColors,
+  selectedVariants,
+  setSelectedVariants,
   priceRange,
   setPriceRange,
   onApplyFilters,
@@ -48,13 +43,25 @@ export function ProductFilters({
     }
   }
 
-  const handleColorChange = (colorId: string, checked: boolean) => {
+  const handleVariantChange = (variantName: string, value: string, checked: boolean) => {
+    const newSelectedVariants = { ...selectedVariants };
     if (checked) {
-      setSelectedColors([...selectedColors, colorId])
+      newSelectedVariants[variantName] = [...(newSelectedVariants[variantName] || []), value];
     } else {
-      setSelectedColors(selectedColors.filter((id) => id !== colorId))
+      newSelectedVariants[variantName] = newSelectedVariants[variantName].filter((v) => v !== value);
     }
+    setSelectedVariants(newSelectedVariants);
   }
+
+  const allVariants = products.reduce((acc, product) => {
+    product.variants.forEach(variant => {
+      if (!acc[variant.name]) {
+        acc[variant.name] = new Set();
+      }
+      acc[variant.name].add(variant.value);
+    });
+    return acc;
+  }, {} as { [key: string]: Set<string> });
 
   return (
     <div className="space-y-8">
@@ -99,28 +106,26 @@ export function ProductFilters({
           </div>
         </div>
 
-        {/* Color Filter */}
-        <div className="mb-8">
-          <h3 className="mb-4 text-lg font-semibold text-foreground">Color</h3>
-          <div className="space-y-3">
-            {colors.map((color) => (
-              <div key={color.id} className="flex items-center space-x-3">
-                <Checkbox
-                  id={color.id}
-                  checked={selectedColors.includes(color.id)}
-                  onCheckedChange={(checked) => handleColorChange(color.id, checked as boolean)}
-                />
-                <div
-                  className="h-4 w-4 rounded-full border border-border"
-                  style={{ backgroundColor: color.color }}
-                />
-                <label htmlFor={color.id} className="text-sm font-medium text-foreground cursor-pointer">
-                  {color.label}
-                </label>
-              </div>
-            ))}
+        {/* Variant Filters */}
+        {Object.entries(allVariants).map(([name, values]) => (
+          <div key={name} className="mb-8">
+            <h3 className="mb-4 text-lg font-semibold text-foreground">{name}</h3>
+            <div className="space-y-3">
+              {Array.from(values).map((value) => (
+                <div key={value} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`${name}-${value}`}
+                    checked={selectedVariants[name]?.includes(value) || false}
+                    onCheckedChange={(checked) => handleVariantChange(name, value, checked as boolean)}
+                  />
+                  <label htmlFor={`${name}-${value}`} className="text-sm font-medium text-foreground cursor-pointer">
+                    {value}
+                  </label>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        ))}
       </div>
       {onApplyFilters && (
         <Button className="w-full" onClick={onApplyFilters}>

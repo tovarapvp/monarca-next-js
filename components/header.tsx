@@ -29,23 +29,24 @@ export default function Header() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const savedCart = localStorage.getItem("monarca-cart");
-    if (savedCart) {
-      const cartItems: CartItem[] = JSON.parse(savedCart);
-      setCartCount(cartItems.reduce((sum, item) => sum + item.quantity, 0));
-    }
-
-    const handleStorageChange = () => {
+    const updateCartCount = () => {
       const savedCart = localStorage.getItem("monarca-cart");
       if (savedCart) {
         const cartItems: CartItem[] = JSON.parse(savedCart);
         setCartCount(cartItems.reduce((sum, item) => sum + item.quantity, 0));
+      } else {
+        setCartCount(0);
       }
     };
 
-    window.addEventListener("storage", handleStorageChange);
+    updateCartCount(); // Initial count
+
+    window.addEventListener("storage", updateCartCount);
+    window.addEventListener("cart-updated", updateCartCount);
+
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("storage", updateCartCount);
+      window.removeEventListener("cart-updated", updateCartCount);
     };
   }, []);
 

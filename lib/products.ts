@@ -1,13 +1,19 @@
 "use client"
 
+export interface Variant {
+  name: string;
+  value: string;
+  price?: number; // Optional price for the variant
+}
+
 export interface Product {
   id: string
   name: string
   description: string
-  price: number
+  price: number // Base price
   category: string
   images: string[]
-  variants: { name: string; value: string }[]
+  variants: Variant[]
   inStock: boolean
   createdAt: string
 }
@@ -18,43 +24,44 @@ const STORAGE_KEY = "monarca_products"
 const sampleProducts: Product[] = [
   {
     id: "1",
-    name: "Collar Mariposa Dorado",
+    name: "Golden Butterfly Necklace",
     description:
-      "Elegante collar con dije de mariposa en oro de 18k, inspirado en la transformación y la belleza natural.",
+      "Elegant necklace with an 18k gold butterfly pendant, inspired by transformation and natural beauty.",
     price: 299.99,
     category: "necklaces",
     images: ["/placeholder-6mn2g.png"],
     variants: [
-      { name: "Material", value: "Oro 18k" },
-      { name: "Longitud", value: "45cm" },
+      { name: "Material", value: "18k Gold", price: 329.99 },
+      { name: "Material", value: "14k Gold", price: 299.99 },
+      { name: "Length", value: "45cm" },
     ],
     inStock: true,
     createdAt: new Date().toISOString(),
   },
   {
     id: "2",
-    name: "Aretes Cristal Naranja",
-    description: "Aretes colgantes con cristales naranjas que capturan la luz, perfectos para ocasiones especiales.",
+    name: "Orange Crystal Earrings",
+    description: "Hanging earrings with orange crystals that capture the light, perfect for special occasions.",
     price: 189.99,
     category: "earrings",
     images: ["/orange-crystal-earrings.png"],
     variants: [
-      { name: "Material", value: "Plata 925" },
-      { name: "Piedra", value: "Cristal Naranja" },
+      { name: "Material", value: "925 Silver" },
+      { name: "Stone", value: "Orange Crystal" },
     ],
     inStock: true,
     createdAt: new Date().toISOString(),
   },
   {
     id: "3",
-    name: "Pulsera Eslabones Oro Rosa",
-    description: "Pulsera de eslabones en oro rosa con acabado pulido, diseño atemporal y elegante.",
+    name: "Rose Gold Link Bracelet",
+    description: "Link bracelet in rose gold with a polished finish, a timeless and elegant design.",
     price: 249.99,
     category: "bracelets",
     images: ["/rose-gold-chain-bracelet.png"],
     variants: [
-      { name: "Material", value: "Oro Rosa 14k" },
-      { name: "Talla", value: "Ajustable" },
+      { name: "Material", value: "14k Rose Gold" },
+      { name: "Size", value: "Adjustable" },
     ],
     inStock: true,
     createdAt: new Date().toISOString(),

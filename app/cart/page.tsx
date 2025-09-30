@@ -4,15 +4,17 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Minus, Plus, X, CreditCard, Shield } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Minus, Plus, X, CreditCard, Shield, ShoppingCart, Mail, MessageCircle } from "lucide-react"
 
 interface CartItem {
-  id: string
-  name: string
-  price: number
-  image: string
-  quantity: number
-  variant?: string
+  id: string; // Composite key: productId-variantValue
+  productId: number;
+  name: string;
+  price: number;
+  image: string;
+  quantity: number;
+  variant?: { name: string; value: string };
 }
 
 export default function CartPage() {
@@ -37,22 +39,44 @@ export default function CartPage() {
     const updatedItems = cartItems.map((item) => (item.id === id ? { ...item, quantity: newQuantity } : item))
     setCartItems(updatedItems)
     localStorage.setItem("monarca-cart", JSON.stringify(updatedItems))
+    window.dispatchEvent(new CustomEvent("cart-updated"))
   }
 
   const removeItem = (id: string) => {
     const updatedItems = cartItems.filter((item) => item.id !== id)
     setCartItems(updatedItems)
     localStorage.setItem("monarca-cart", JSON.stringify(updatedItems))
+    window.dispatchEvent(new CustomEvent("cart-updated"))
   }
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
+  const handleWhatsAppCheckout = () => {
+    const itemsDetails = cartItems
+      .map((item) => `- ${item.quantity}x ${item.name}${item.variant ? ` (${item.variant.name}: ${item.variant.value})` : ""} (${item.price.toFixed(2)} each)`)
+      .join("\n")
+    const message = `Hello MONARCA! 👋\n\nI would like to place an order with the following items from my cart:\n\n${itemsDetails}\n\nSubtotal: ${subtotal.toFixed(2)}\n\nPlease let me know the next steps for payment and shipping. Thank you!`
+    const whatsappUrl = `https://wa.me/1234567890?text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, "_blank")
+  }
+
+  const handleEmailCheckout = () => {
+    const today = new Date().toLocaleDateString("en-US")
+    const subject = `Order from MONARCA cart - ${today}`
+    const itemsDetails = cartItems
+      .map((item) => `- ${item.quantity}x ${item.name}${item.variant ? ` (${item.variant.name}: ${item.variant.value})` : ""} (${item.price.toFixed(2)} each)`)
+      .join("\n")
+    const body = `Hello MONARCA! 👋\n\nI would like to place an order with the following items from my cart:\n\n${itemsDetails}\n\nSubtotal: ${subtotal.toFixed(2)}\n\nPlease let me know the next steps for payment and shipping. Thank you!`
+    const emailUrl = `mailto:orders@monarca.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    window.location.href = emailUrl
+  }
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p>Loading your cart...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your cart...</p>
         </div>
       </div>
     )
@@ -60,15 +84,13 @@ export default function CartPage() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="text-center max-w-md">
-          <div className="mb-8">
-            <Image src="/monarca-logo.png" alt="MONARCA" width={120} height={120} className="mx-auto mb-6" />
-          </div>
-          <h1 className="font-serif text-3xl font-bold mb-4 text-gray-900">Tu Carrito / Your Cart</h1>
-          <p className="text-lg text-gray-600 mb-8">Tu carrito está vacío.</p>
-          <Button asChild size="lg" className="bg-orange-500 hover:bg-orange-600 text-white">
-            <Link href="/products">Ir a la Tienda</Link>
+          <ShoppingCart className="w-20 h-20 mx-auto mb-6 text-muted-foreground" />
+          <h1 className="font-serif text-3xl font-bold mb-4 text-foreground">Your Cart is Empty</h1>
+          <p className="text-lg text-muted-foreground mb-8">Looks like you haven't added anything to your cart yet.</p>
+          <Button asChild size="lg">
+            <Link href="/products">Continue Shopping</Link>
           </Button>
         </div>
       </div>
@@ -76,112 +98,145 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        <h1 className="font-serif text-3xl md:text-4xl font-bold mb-8 text-gray-900">Tu Carrito / Your Cart</h1>
+    <div className="min-h-screen bg-background py-8">
+      <div className="container mx-auto px-4">
+        <h1 className="font-serif text-3xl md:text-4xl font-bold mb-8 text-foreground">Your Cart</h1>
 
         <div className="grid lg:grid-cols-10 gap-8">
-          {/* Left Column - Product List (70% width) */}
+          {/* Left Column - Product List */}
           <div className="lg:col-span-7 space-y-4">
             {cartItems.map((item) => (
-              <div key={item.id} className="bg-white rounded-lg p-4 sm:p-6 shadow-sm">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0">
-                    <Image
-                      src={item.image || "/placeholder.svg"}
-                      alt={item.name}
-                      fill
-                      className="object-cover rounded-md"
-                    />
-                  </div>
+              <Card key={item.id}>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex-shrink-0">
+                      <Image
+                        src={item.image || "/placeholder.svg"}
+                        alt={item.name}
+                        fill
+                        className="object-cover rounded-md"
+                      />
+                    </div>
 
-                  <div className="flex-grow">
-                    <h3 className="font-semibold text-gray-900 mb-1 text-lg">{item.name}</h3>
-                    {item.variant && <p className="text-sm text-gray-500 mb-2">Color: {item.variant}</p>}
-                    <p className="text-orange-600 font-semibold text-xl">${item.price}</p>
-                  </div>
+                    <div className="flex-grow">
+                      <h3 className="font-semibold text-foreground mb-1 text-lg">{item.name}</h3>
+                      {item.variant && <p className="text-sm text-muted-foreground mb-2">{item.variant.name}: {item.variant.value}</p>}
+                      <p className="text-primary font-semibold text-xl">${item.price}</p>
+                    </div>
 
-                  <div className="flex items-center gap-3 my-3 sm:my-0">
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+                    <div className="flex items-center gap-3 my-3 sm:my-0">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        className="w-9 h-9 rounded-full"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </Button>
+                      <span className="w-10 text-center font-semibold text-lg">{item.quantity}</span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        className="w-9 h-9 rounded-full"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    <div className="text-right flex-shrink-0 w-24">
+                      <p className="font-semibold text-foreground text-lg">${(item.price * item.quantity).toFixed(2)}</p>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeItem(item.id)}
+                      className="text-muted-foreground hover:text-destructive absolute top-2 right-2 sm:static"
                     >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-10 text-center font-semibold text-lg">{item.quantity}</span>
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
+                      <X className="w-5 h-5" />
+                    </Button>
                   </div>
-
-                  <div className="text-right flex-shrink-0 w-24">
-                    <p className="font-semibold text-gray-900 text-lg">${(item.price * item.quantity).toFixed(2)}</p>
-                  </div>
-
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    className="text-gray-400 hover:text-red-500 p-1 absolute top-2 right-2 sm:static"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
 
-          {/* Right Column - Order Summary (30% width) */}
+          {/* Right Column - Order Summary */}
           <div className="lg:col-span-3">
-            <div className="bg-white rounded-lg p-6 shadow-sm sticky top-8">
-              <h2 className="font-serif text-xl font-bold mb-6 text-gray-900">Order Summary / Resumen del Pedido</h2>
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="font-serif text-xl font-bold mb-6 text-foreground">Order Summary</h2>
 
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-semibold">${subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="text-sm text-gray-500">Los costos de envío se calcularán en el siguiente paso.</span>
-                </div>
-                <hr />
-                <div className="flex justify-between text-lg font-bold">
-                  <span>Total</span>
-                  <span>${subtotal.toFixed(2)}</span>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <Button asChild size="lg" className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 text-lg">
-                  <Link href="/checkout">Finalizar Compra / Proceed to Checkout</Link>
-                </Button>
-
-                <Button variant="outline" asChild className="w-full bg-transparent">
-                  <Link href="/products">Seguir Comprando / Continue Shopping</Link>
-                </Button>
-              </div>
-
-              {/* Trust Icons */}
-              <div className="mt-6 pt-6 border-t">
-                <p className="text-sm text-gray-600 mb-3 text-center">Secure Payment Methods</p>
-                <div className="flex justify-center gap-3">
-                  <div className="bg-gray-50 px-3 py-2 rounded-md flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-blue-600" />
-                    <span className="text-sm font-medium">Visa</span>
+                <div className="space-y-4 mb-6">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="font-semibold">${subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="bg-gray-50 px-3 py-2 rounded-md flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-red-600" />
-                    <span className="text-sm font-medium">Mastercard</span>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Shipping</span>
+                    <span className="text-sm text-muted-foreground">Calculated at next step</span>
                   </div>
-                  <div className="bg-gray-50 px-3 py-2 rounded-md flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-blue-500" />
-                    <span className="text-sm font-medium">PayPal</span>
+                  <hr />
+                  <div className="flex justify-between text-lg font-bold">
+                    <span>Total</span>
+                    <span>${subtotal.toFixed(2)}</span>
                   </div>
                 </div>
-              </div>
-            </div>
+
+                <div className="space-y-3">
+                  <Button asChild size="lg" className="w-full">
+                    <Link href="/checkout">Proceed to Checkout</Link>
+                  </Button>
+
+                  <Button variant="outline" asChild className="w-full">
+                    <Link href="/products">Continue Shopping</Link>
+                  </Button>
+                </div>
+
+                {/* Conversational Checkout */}
+                <div className="mt-6 pt-6 border-t">
+                  <p className="text-sm text-muted-foreground mb-3 text-center">Or checkout with an advisor:</p>
+                  <div className="flex flex-col gap-3">
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 bg-transparent hover:bg-green-50 hover:border-green-500 hover:text-green-700"
+                      onClick={handleWhatsAppCheckout}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Checkout via WhatsApp
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 bg-transparent hover:bg-blue-50 hover:border-blue-500 hover:text-blue-700"
+                      onClick={handleEmailCheckout}
+                    >
+                      <Mail className="h-4 w-4" />
+                      Checkout via Email
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Trust Icons */}
+                <div className="mt-6 pt-6 border-t">
+                  <p className="text-sm text-muted-foreground mb-3 text-center">Secure Payment Methods</p>
+                  <div className="flex justify-center gap-3">
+                    <div className="bg-muted px-3 py-2 rounded-md flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-blue-600" />
+                      <span className="text-sm font-medium">Visa</span>
+                    </div>
+                    <div className="bg-muted px-3 py-2 rounded-md flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-red-600" />
+                      <span className="text-sm font-medium">Mastercard</span>
+                    </div>
+                    <div className="bg-muted px-3 py-2 rounded-md flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-blue-500" />
+                      <span className="text-sm font-medium">PayPal</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

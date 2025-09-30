@@ -62,22 +62,34 @@ const products = [
   },
 ]
 
+import { getProducts, type Product } from "@/lib/products"
+
 export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([])
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [selectedColors, setSelectedColors] = useState<string[]>([])
+  const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: string[] }>({})
   const [priceRange, setPriceRange] = useState([0, 600])
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false)
 
+  useEffect(() => {
+    setProducts(getProducts())
+  }, [])
+
   const filteredProducts = products.filter((product) => {
     const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(product.category)
-    const colorMatch = selectedColors.length === 0 || selectedColors.includes(product.color)
     const priceMatch = product.price >= priceRange[0] && product.price <= priceRange[1]
-    return categoryMatch && colorMatch && priceMatch
+    
+    const variantMatch = Object.entries(selectedVariants).every(([name, values]) => {
+      if (values.length === 0) return true;
+      return product.variants.some(variant => variant.name === name && values.includes(variant.value));
+    });
+
+    return categoryMatch && priceMatch && variantMatch
   })
 
   const handleClearFilters = () => {
     setSelectedCategories([])
-    setSelectedColors([])
+    setSelectedVariants({})
     setPriceRange([0, 600])
     setIsFilterMenuOpen(false) // Close the sheet after clearing filters
   }
@@ -97,10 +109,11 @@ export default function ProductsPage() {
           {/* Left Column - Filters (25% width) */}
           <div className="hidden lg:block lg:w-1/4">
             <ProductFilters
+              products={products}
               selectedCategories={selectedCategories}
               setSelectedCategories={setSelectedCategories}
-              selectedColors={selectedColors}
-              setSelectedColors={setSelectedColors}
+              selectedVariants={selectedVariants}
+              setSelectedVariants={setSelectedVariants}
               priceRange={priceRange}
               setPriceRange={setPriceRange}
             />
@@ -132,10 +145,11 @@ export default function ProductsPage() {
                   </SheetHeader>
                   <div className="py-6">
                     <ProductFilters
+                      products={products}
                       selectedCategories={selectedCategories}
                       setSelectedCategories={setSelectedCategories}
-                      selectedColors={selectedColors}
-                      setSelectedColors={setSelectedColors}
+                      selectedVariants={selectedVariants}
+                      setSelectedVariants={setSelectedVariants}
                       priceRange={priceRange}
                       setPriceRange={setPriceRange}
                       onApplyFilters={() => setIsFilterMenuOpen(false)} // Close sheet on apply
@@ -159,7 +173,7 @@ export default function ProductsPage() {
                     <Link href={`/products/${product.id}`}>
                       <div className="aspect-square overflow-hidden rounded-t-lg">
                         <img
-                          src={`${product.image}?height=300&width=300&query=${product.name} luxury jewelry`}
+                          src={`${product.images[0]}?height=300&width=300&query=${product.name} luxury jewelry`}
                           alt={product.name}
                           className="h-full w-full object-cover transition-transform group-hover:scale-105"
                         />

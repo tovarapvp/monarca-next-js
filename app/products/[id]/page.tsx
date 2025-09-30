@@ -9,6 +9,9 @@ import Link from "next/link"
 import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Mail, MessageCircle, ShoppingCart, Menu } from "lucide-react"
 
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
+
 // Mock product data - in a real app this would come from an API
 const productData = {
   1: {
@@ -31,6 +34,75 @@ const productData = {
     },
     care: "Clean with soft cloth. Avoid contact with perfumes, lotions, and water. Store in provided jewelry box.",
     shipping: "Free shipping on orders over $200. Standard delivery 3-5 business days. Express delivery available.",
+    variants: [
+      { name: "Material", value: "18k Gold", price: 329.99 },
+      { name: "Material", value: "14k Gold", price: 299.99 },
+      { name: "Length", value: "45cm" },
+    ],
+  },
+  2: {
+    id: 2,
+    name: "Pearl Drop Earrings",
+    price: 199,
+    description: "Elegant pearl drop earrings, perfect for any occasion.",
+    images: ["/luxury-jewelry.png"],
+    details: {
+      material: "Freshwater Pearls, Sterling Silver",
+      dimensions: "Length: 3cm",
+      weight: "5g",
+      gemstones: "N/A",
+    },
+    care: "Wipe clean with a soft cloth.",
+    shipping: "Standard shipping rates apply.",
+    variants: [],
+  },
+  3: {
+    id: 3,
+    name: "Rose Gold Bracelet",
+    price: 249,
+    description: "A beautiful rose gold bracelet to complement your style.",
+    images: ["/luxury-jewelry.png"],
+    details: {
+      material: "18k Rose Gold Plated",
+      dimensions: "Length: 18cm",
+      weight: "12g",
+      gemstones: "N/A",
+    },
+    care: "Avoid contact with harsh chemicals.",
+    shipping: "Standard shipping rates apply.",
+    variants: [],
+  },
+  4: {
+    id: 4,
+    name: "Diamond Stud Earrings",
+    price: 399,
+    description: "Classic diamond stud earrings for a timeless look.",
+    images: ["/luxury-jewelry.png"],
+    details: {
+      material: "14k White Gold",
+      dimensions: "0.5cm diameter",
+      weight: "2g",
+      gemstones: "0.5ct Diamonds",
+    },
+    care: "Clean with a specialized jewelry cleaner.",
+    shipping: "Insured shipping required.",
+    variants: [],
+  },
+  5: {
+    id: 5,
+    name: "Emerald Pendant",
+    price: 449,
+    description: "A stunning emerald pendant that makes a statement.",
+    images: ["/luxury-jewelry.png"],
+    details: {
+      material: "Sterling Silver, Emerald",
+      dimensions: "Pendant: 1.5cm, Chain: 40cm",
+      weight: "7g",
+      gemstones: "Natural Emerald",
+    },
+    care: "Handle with care.",
+    shipping: "Standard shipping rates apply.",
+    variants: [],
   },
 }
 
@@ -42,16 +114,19 @@ const relatedProducts = [
 ]
 
 interface CartItem {
-  id: number;
+  id: string; // Composite key: productId-variantValue
+  productId: number;
   name: string;
   price: number;
   image: string;
   quantity: number;
+  variant?: { name: string; value: string };
 }
 
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
-  const product = productData[1] // In a real app, use params.id to fetch the right product
+  const product = productData[params.id as keyof typeof productData]
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [selectedVariant, setSelectedVariant] = useState<any>(null)
   const [cartCount, setCartCount] = useState(0)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
@@ -78,20 +153,41 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
     return <div>Product not found</div>
   }
 
+  const handleVariantChange = (value: string) => {
+    const variant = product.variants.find((v) => v.value === value)
+    setSelectedVariant(variant)
+  }
+
   const handleAddToCart = () => {
     const savedCart = localStorage.getItem("monarca-cart")
     let cartItems: CartItem[] = savedCart ? JSON.parse(savedCart) : []
 
-    const existingItemIndex = cartItems.findIndex((item) => item.id === product.id)
+    const price = selectedVariant?.price || product.price
+    const cartItemId = selectedVariant ? `${product.id}-${selectedVariant.value}` : product.id.toString()
+
+    const existingItemIndex = cartItems.findIndex(
+      (item) => item.id === cartItemId
+    )
 
     if (existingItemIndex > -1) {
       cartItems[existingItemIndex].quantity += 1
     } else {
-      cartItems.push({ ...product, quantity: 1, image: product.images[0] })
+      cartItems.push({ 
+        id: cartItemId,
+        productId: product.id,
+        name: product.name, 
+        price, 
+        quantity: 1, 
+        image: product.images[0], 
+        variant: selectedVariant 
+      })
     }
 
     localStorage.setItem("monarca-cart", JSON.stringify(cartItems))
     setCartCount(cartItems.reduce((acc, item) => acc + item.quantity, 0))
+
+    // Dispatch the custom event
+    window.dispatchEvent(new CustomEvent("cart-updated"))
 
     toast({
       title: "Added to Cart",
@@ -100,17 +196,21 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   }
 
   const handleWhatsAppOrder = () => {
-    const message = `Hi! I'm interested in ordering the ${product.name} for $${product.price}. Can you help me with the purchase?`
+    const price = selectedVariant?.price || product.price
+    const message = `Hello, I'm interested in the product: ${product.name} - ${price}. ID: ${product.id}. Could you give me more information?`
     const whatsappUrl = `https://wa.me/1234567890?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, "_blank")
   }
 
   const handleEmailOrder = () => {
-    const subject = `Order Inquiry: ${product.name}`
-    const body = `Hello,\n\nI'm interested in purchasing the ${product.name} for $${product.price}.\n\nPlease let me know about availability and next steps.\n\nThank you!`
+    const price = selectedVariant?.price || product.price
+    const subject = `Inquiry about ${product.name}`
+    const body = `Hello, I'm interested in the product: ${product.name} - ${price}. ID: ${product.id}. Could you give me more information?`
     const emailUrl = `mailto:orders@monarca.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
     window.location.href = emailUrl
   }
+
+  const displayPrice = selectedVariant?.price || product.price
 
   return (
     <div className="min-h-screen bg-background">
@@ -198,9 +298,29 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           <div className="space-y-6">
             <div>
               <h1 className="text-4xl font-serif font-bold text-foreground mb-4">{product.name}</h1>
-              <p className="text-3xl font-bold text-primary mb-6">${product.price}</p>
+              <p className="text-3xl font-bold text-primary mb-6">${displayPrice}</p>
               <p className="text-lg text-muted-foreground leading-relaxed">{product.description}</p>
             </div>
+
+            {product.variants.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-foreground mb-2">Variants</h3>
+                <RadioGroup onValueChange={handleVariantChange} className="flex gap-2">
+                  {product.variants.map((variant) => (
+                    <div key={variant.value}>
+                      <RadioGroupItem value={variant.value} id={variant.value} className="peer sr-only" />
+                      <Label
+                        htmlFor={variant.value}
+                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                      >
+                        {variant.name}: {variant.value}
+                        {variant.price && <span className="text-xs text-muted-foreground">+${variant.price - product.price}</span>}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+            )}
 
             {/* Multi-Channel Ordering Module - Structure for next task */}
             <div className="space-y-4">
@@ -221,7 +341,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                   onClick={handleWhatsAppOrder}
                 >
                   <MessageCircle className="h-4 w-4" />
-                  Order via WhatsApp
+                  Inquire via WhatsApp
                 </Button>
                 <Button
                   variant="outline"
@@ -230,14 +350,14 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                   onClick={handleEmailOrder}
                 >
                   <Mail className="h-4 w-4" />
-                  Order via Email
+                  Inquire via Email
                 </Button>
               </div>
             </div>
 
             {/* Product Details Tabs */}
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="flex flex-wrap h-auto">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="care">Care Instructions</TabsTrigger>
                 <TabsTrigger value="shipping">Shipping & Returns</TabsTrigger>

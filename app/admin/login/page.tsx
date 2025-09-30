@@ -30,8 +30,8 @@ export default function AdminLogin() {
       loginAdmin(username)
 
       toast({
-        title: "Access Granted / Acceso Concedido",
-        description: "Welcome to the admin panel / Bienvenido al panel de administración",
+        title: "Access Granted",
+        description: "Welcome to the admin panel",
       })
 
       setTimeout(() => {
@@ -39,8 +39,8 @@ export default function AdminLogin() {
       }, 1000)
     } else {
       toast({
-        title: "Authentication Error / Error de Autenticación",
-        description: "Incorrect username or password / Usuario o contraseña incorrectos",
+        title: "Authentication Error",
+        description: "Incorrect username or password",
         variant: "destructive",
       })
     }
@@ -49,27 +49,27 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
             <Image src="/monarca-logo.png" alt="MONARCA" width={60} height={60} className="h-15 w-auto" />
           </div>
-          <CardTitle className="text-2xl font-serif text-gray-800">Admin Panel / Panel de Administración</CardTitle>
+          <CardTitle className="text-2xl font-serif">Admin Panel</CardTitle>
           <CardDescription>
-            Enter your credentials to access the system / Ingresa tus credenciales para acceder al sistema
+            Enter your credentials to access the system
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username / Usuario</Label>
+              <Label htmlFor="username">Username</Label>
               <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Enter your username / Ingresa tu usuario"
+                  placeholder="Enter your username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="pl-10"
@@ -79,13 +79,13 @@ export default function AdminLogin() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password / Contraseña</Label>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password / Ingresa tu contraseña"
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
@@ -94,25 +94,25 @@ export default function AdminLogin() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700" disabled={isLoading}>
-              {isLoading ? "Logging in... / Iniciando sesión..." : "Login / Iniciar Sesión"}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Logging in..." : "Login"}
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-500">
-            <p>Test credentials / Credenciales de prueba:</p>
+          <div className="mt-6 text-center text-sm text-muted-foreground">
+            <p>Test credentials:</p>
             <p>
-              Username / Usuario: <code className="bg-gray-100 px-1 rounded">admin</code>
+              Username: <code className="bg-muted px-1 rounded">admin</code>
             </p>
             <p>
-              Password / Contraseña: <code className="bg-gray-100 px-1 rounded">monarca2024</code>
+              Password: <code className="bg-muted px-1 rounded">monarca2024</code>
             </p>
           </div>
         </CardContent>
