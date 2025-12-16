@@ -1,62 +1,60 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { isAdminAuthenticated } from "@/lib/auth"
-import { LayoutDashboard, Package, ShoppingCart, Users, Settings, Save } from "lucide-react"
+import { Save, Loader2, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useSettings, updateMultipleSettings } from "@/hooks/use-settings"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function AdminSettings() {
+  const { settings: dbSettings, loading, error } = useSettings()
   const [settings, setSettings] = useState({
-    siteName: "MONARCA",
-    siteDescription: "Handcrafted jewelry inspired by transformation",
-    contactEmail: "info@monarca.com",
-    contactPhone: "+1 (555) 123-4567",
-    address: "123 Jewelry Street, City, State 12345",
-    socialMedia: {
-      instagram: "@monarca_jewelry",
-      facebook: "MonarcaJewelry",
-      whatsapp: "+1555123456",
-    },
-    shipping: {
-      freeShippingThreshold: "100",
-      standardShippingCost: "15",
-      expressShippingCost: "25",
-    },
+    site_name: "",
+    contact_email: "",
+    contact_phone: "",
+    currency: "USD",
+    tax_rate: 0,
+    free_shipping_threshold: 200,
   })
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
-    loadSettings()
-  }, [])
-
-  const loadSettings = () => {
-    // In a real app, this would load from a database
-    const savedSettings = localStorage.getItem("monarca_settings")
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings))
+    if (dbSettings && Object.keys(dbSettings).length > 0) {
+      setSettings({
+        site_name: dbSettings.site_name || "MONARCA",
+        contact_email: dbSettings.contact_email || "",
+        contact_phone: dbSettings.contact_phone || "",
+        currency: dbSettings.currency || "USD",
+        tax_rate: dbSettings.tax_rate || 0,
+        free_shipping_threshold: dbSettings.free_shipping_threshold || 200,
+      })
     }
-  }
+  }, [dbSettings])
 
   const handleSave = async () => {
     setIsLoading(true)
     try {
-      // In a real app, this would save to a database
-      localStorage.setItem("monarca_settings", JSON.stringify(settings))
+      await updateMultipleSettings({
+        site_name: JSON.stringify(settings.site_name),
+        contact_email: JSON.stringify(settings.contact_email),
+        contact_phone: JSON.stringify(settings.contact_phone),
+        currency: JSON.stringify(settings.currency),
+        tax_rate: settings.tax_rate,
+        free_shipping_threshold: settings.free_shipping_threshold,
+      })
 
       toast({
         title: "Settings saved",
         description: "The changes have been saved successfully.",
       })
     } catch (error) {
+      console.error("Error saving settings:", error)
       toast({
         title: "Error",
         description: "There was an error saving the settings.",
@@ -67,13 +65,34 @@ export default function AdminSettings() {
     }
   }
 
+  if (error) {
+    return (
+      <div className="p-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Error loading settings: {error.message}
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center py-12">
+        <Loader2 className="h-12 w-12 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
   return (
-    <div>
+    <div className="p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-serif text-gray-800 mb-2">Settings</h1>
-          <p className="text-gray-600">Manage your store's general settings</p>
+          <h1 className="text-3xl font-serif font-bold text-gray-800">Settings</h1>
+          <p className="text-gray-600 mt-1">Manage your store configuration</p>
         </div>
         <Button onClick={handleSave} disabled={isLoading}>
           <Save className="h-4 w-4 mr-2" />
@@ -81,7 +100,7 @@ export default function AdminSettings() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* General Settings */}
         <Card>
           <CardHeader>
@@ -92,18 +111,22 @@ export default function AdminSettings() {
               <Label htmlFor="siteName">Site Name</Label>
               <Input
                 id="siteName"
-                value={settings.siteName}
-                onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
+                value={settings.site_name}
+                onChange={(e) => setSettings({ ...settings, site_name: e.target.value })}
+                placeholder="MONARCA"
               />
             </div>
             <div>
-              <Label htmlFor="siteDescription">Description</Label>
-              <Textarea
-                id="siteDescription"
-                value={settings.siteDescription}
-                onChange={(e) => setSettings({ ...settings, siteDescription: e.target.value })}
-                rows={3}
+              <Label htmlFor="currency">Currency</Label>
+              <Input
+                id="currency"
+                value={settings.currency}
+                onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
+                placeholder="USD"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Default currency for prices
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -119,74 +142,47 @@ export default function AdminSettings() {
               <Input
                 id="contactEmail"
                 type="email"
-                value={settings.contactEmail}
-                onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
+                value={settings.contact_email}
+                onChange={(e) => setSettings({ ...settings, contact_email: e.target.value })}
+                placeholder="contact@monarca.com"
               />
             </div>
             <div>
-              <Label htmlFor="contactPhone">Phone</Label>
+              <Label htmlFor="contactPhone">Phone / WhatsApp</Label>
               <Input
                 id="contactPhone"
-                value={settings.contactPhone}
-                onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })}
+                value={settings.contact_phone}
+                onChange={(e) => setSettings({ ...settings, contact_phone: e.target.value })}
+                placeholder="+1234567890"
               />
-            </div>
-            <div>
-              <Label htmlFor="address">Address</Label>
-              <Textarea
-                id="address"
-                value={settings.address}
-                onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                rows={2}
-              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Used for WhatsApp inquiries
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Social Media */}
+        {/* Pricing Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Social Media</CardTitle>
+            <CardTitle>Pricing & Tax</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="instagram">Instagram</Label>
+              <Label htmlFor="taxRate">Tax Rate (%)</Label>
               <Input
-                id="instagram"
-                value={settings.socialMedia.instagram}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    socialMedia: { ...settings.socialMedia, instagram: e.target.value },
-                  })
-                }
+                id="taxRate"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={settings.tax_rate}
+                onChange={(e) => setSettings({ ...settings, tax_rate: parseFloat(e.target.value) || 0 })}
+                placeholder="0"
               />
-            </div>
-            <div>
-              <Label htmlFor="facebook">Facebook</Label>
-              <Input
-                id="facebook"
-                value={settings.socialMedia.facebook}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    socialMedia: { ...settings.socialMedia, facebook: e.target.value },
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="whatsapp">WhatsApp</Label>
-              <Input
-                id="whatsapp"
-                value={settings.socialMedia.whatsapp}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    socialMedia: { ...settings.socialMedia, whatsapp: e.target.value },
-                  })
-                }
-              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Percentage added to product prices
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -198,50 +194,38 @@ export default function AdminSettings() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="freeShipping">Free Shipping Threshold (USD)</Label>
+              <Label htmlFor="freeShipping">Free Shipping Threshold ({settings.currency})</Label>
               <Input
                 id="freeShipping"
                 type="number"
-                value={settings.shipping.freeShippingThreshold}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    shipping: { ...settings.shipping, freeShippingThreshold: e.target.value },
-                  })
-                }
+                min="0"
+                value={settings.free_shipping_threshold}
+                onChange={(e) => setSettings({ ...settings, free_shipping_threshold: parseInt(e.target.value) || 0 })}
+                placeholder="200"
               />
-            </div>
-            <div>
-              <Label htmlFor="standardShipping">Standard Shipping Cost (USD)</Label>
-              <Input
-                id="standardShipping"
-                type="number"
-                value={settings.shipping.standardShippingCost}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    shipping: { ...settings.shipping, standardShippingCost: e.target.value },
-                  })
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="expressShipping">Express Shipping Cost (USD)</Label>
-              <Input
-                id="expressShipping"
-                type="number"
-                value={settings.shipping.expressShippingCost}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    shipping: { ...settings.shipping, expressShippingCost: e.target.value },
-                  })
-                }
-              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Free shipping for orders over this amount
+              </p>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Info Box */}
+      <Card className="mt-6 bg-blue-50 border-blue-200">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-blue-900">Settings are stored in Supabase</p>
+              <p className="text-sm text-blue-700">
+                These settings are saved to your database and will persist across sessions.
+                Changes take effect immediately after saving.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

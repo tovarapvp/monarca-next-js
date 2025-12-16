@@ -1,67 +1,21 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { isAdminAuthenticated } from "@/lib/auth"
-import { LayoutDashboard, Package, ShoppingCart, Users, Settings, Eye, Package2 } from "lucide-react"
-
-interface Order {
-  id: string
-  customerName: string
-  customerEmail: string
-  items: { name: string; quantity: number; price: number }[]
-  total: number
-  status: "pending" | "processing" | "shipped" | "delivered"
-  createdAt: string
-}
-
-// Sample orders data
-const sampleOrders: Order[] = [
-  {
-    id: "ORD-001",
-    customerName: "María González",
-    customerEmail: "maria@email.com",
-    items: [
-      { name: "Collar Mariposa Dorado", quantity: 1, price: 299.99 },
-      { name: "Aretes Cristal Naranja", quantity: 2, price: 189.99 },
-    ],
-    total: 679.97,
-    status: "pending",
-    createdAt: "2024-01-15T10:30:00Z",
-  },
-  {
-    id: "ORD-002",
-    customerName: "Ana Rodríguez",
-    customerEmail: "ana@email.com",
-    items: [{ name: "Pulsera Eslabones Oro Rosa", quantity: 1, price: 249.99 }],
-    total: 249.99,
-    status: "processing",
-    createdAt: "2024-01-14T15:45:00Z",
-  },
-  {
-    id: "ORD-003",
-    customerName: "Carmen López",
-    customerEmail: "carmen@email.com",
-    items: [
-      { name: "Collar Mariposa Dorado", quantity: 1, price: 299.99 },
-      { name: "Pulsera Eslabones Oro Rosa", quantity: 1, price: 249.99 },
-    ],
-    total: 549.98,
-    status: "shipped",
-    createdAt: "2024-01-13T09:20:00Z",
-  },
-]
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ShoppingCart, Package2, Eye, Loader2, AlertCircle } from "lucide-react"
+import { useOrders, updateOrderStatus } from "@/hooks/use-orders"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AdminOrders() {
-  const [orders] = useState<Order[]>(sampleOrders)
+  const { orders, loading, error, refetch } = useOrders()
+  const { toast } = useToast()
 
-  const getStatusColor = (status: Order["status"]) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
+      case "inquiry":
+        return "bg-gray-100 text-gray-800"
       case "pending":
         return "bg-yellow-100 text-yellow-800"
       case "processing":
@@ -70,9 +24,45 @@ export default function AdminOrders() {
         return "bg-purple-100 text-purple-800"
       case "delivered":
         return "bg-green-100 text-green-800"
+      case "cancelled":
+        return "bg-red-100 text-red-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
+  }
+
+  const handleStatusChange = async (orderId: string, currentStatus: string) => {
+    const statuses = ["inquiry", "pending", "processing", "shipped", "delivered", "cancelled"]
+    const currentIndex = statuses.indexOf(currentStatus)
+    const nextStatus = statuses[Math.min(currentIndex + 1, statuses.length - 1)]
+
+    try {
+      await updateOrderStatus(orderId, nextStatus as any)
+      refetch()
+      toast({
+        title: "Order status updated",
+        description: `Order status changed to ${nextStatus}`,
+      })
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to update order status. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Error loading orders: {error.message}
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
   }
 
   return (
@@ -83,65 +73,81 @@ export default function AdminOrders() {
         <p className="text-gray-600">Manage your store's orders</p>
       </div>
 
-      {/* Orders List */}
-      <div className="space-y-6">
-        {orders.map((order) => (
-          <Card key={order.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Order {order.id}</CardTitle>
-                  <p className="text-sm text-gray-600">
-                    {order.customerName} • {order.customerEmail}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge className={getStatusColor(order.status)}>{order.status}</Badge>
-                  <p className="text-sm text-gray-500">
-                    {new Date(order.createdAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {order.items.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <Package2 className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                      </div>
-                    </div>
-                    <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between pt-3">
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      Change Status
-                    </Button>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-primary">Total: ${order.total.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-12 w-12 animate-spin text-gray-400" />
+        </div>
+      )}
 
-      {orders.length === 0 && (
+      {/* Orders List */}
+      {!loading && orders.length > 0 && (
+        <div className="space-y-6">
+          {orders.map((order) => (
+            <Card key={order.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Order #{order.id.slice(0, 8)}</CardTitle>
+                    <p className="text-sm text-gray-600">
+                      {order.customer_name} • {order.customer_email}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge className={getStatusColor(order.status || "inquiry")}>
+                      {order.status || "inquiry"}
+                    </Badge>
+                    <p className="text-sm text-gray-500">
+                      {order.created_at && new Date(order.created_at).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {order.order_items?.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <Package2 className="h-4 w-4 text-gray-400" />
+                        <div>
+                          <p className="font-medium">{item.products?.name || "Unknown Product"}</p>
+                          <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                        </div>
+                      </div>
+                      <p className="font-semibold">${(item.price_at_purchase * item.quantity).toFixed(2)}</p>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between pt-3">
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleStatusChange(order.id, order.status || "inquiry")}
+                      >
+                        Change Status
+                      </Button>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-primary">Total: ${order.total.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && orders.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
             <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />

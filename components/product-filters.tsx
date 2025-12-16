@@ -1,137 +1,108 @@
-
 "use client"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { Product } from "@/lib/products"
+import { useCategories } from "@/hooks/use-categories"
+import { Loader2 } from "lucide-react"
 
 interface ProductFiltersProps {
-  products: Product[];
-  selectedCategories: string[];
-  setSelectedCategories: (categories: string[]) => void;
-  selectedVariants: { [key: string]: string[] };
-  setSelectedVariants: (variants: { [key: string]: string[] }) => void;
-  priceRange: number[];
-  setPriceRange: (range: number[]) => void;
-  onApplyFilters?: () => void; // Optional: for mobile sheet to close
+  products: any[]
+  selectedCategories: string[]
+  setSelectedCategories: (categories: string[]) => void
+  selectedVariants: { [key: string]: string[] }
+  setSelectedVariants: (variants: { [key: string]: string[] }) => void
+  priceRange: number[]
+  setPriceRange: (range: number[]) => void
+  onApplyFilters?: () => void
 }
 
-const categories = [
-  { id: "necklaces", label: "Necklaces" },
-  { id: "earrings", label: "Earrings" },
-  { id: "bracelets", label: "Bracelets" },
-  { id: "rings", label: "Rings" },
-]
-
 export function ProductFilters({
-  products,
   selectedCategories,
   setSelectedCategories,
-  selectedVariants,
-  setSelectedVariants,
   priceRange,
   setPriceRange,
   onApplyFilters,
 }: ProductFiltersProps) {
+  const { categories, loading } = useCategories()
 
-  const handleCategoryChange = (categoryId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedCategories([...selectedCategories, categoryId])
+  const toggleCategory = (categorySlug: string) => {
+    if (selectedCategories.includes(categorySlug)) {
+      setSelectedCategories(selectedCategories.filter((c) => c !== categorySlug))
     } else {
-      setSelectedCategories(selectedCategories.filter((id) => id !== categoryId))
+      setSelectedCategories([...selectedCategories, categorySlug])
     }
   }
-
-  const handleVariantChange = (variantName: string, value: string, checked: boolean) => {
-    const newSelectedVariants = { ...selectedVariants };
-    if (checked) {
-      newSelectedVariants[variantName] = [...(newSelectedVariants[variantName] || []), value];
-    } else {
-      newSelectedVariants[variantName] = newSelectedVariants[variantName].filter((v) => v !== value);
-    }
-    setSelectedVariants(newSelectedVariants);
-  }
-
-  const allVariants = products.reduce((acc, product) => {
-    product.variants.forEach(variant => {
-      if (!acc[variant.name]) {
-        acc[variant.name] = new Set();
-      }
-      acc[variant.name].add(variant.value);
-    });
-    return acc;
-  }, {} as { [key: string]: Set<string> });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Categories */}
       <div>
-        <h2 className="mb-6 text-2xl font-serif font-bold text-foreground">Filter By</h2>
-
-        {/* Category Filter */}
-        <div className="mb-8">
-          <h3 className="mb-4 text-lg font-semibold text-foreground">Category</h3>
-          <div className="space-y-3">
+        <h3 className="font-semibold mb-3 text-foreground">Categories</h3>
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading categories...
+          </div>
+        ) : (
+          <div className="space-y-2">
             {categories.map((category) => (
               <div key={category.id} className="flex items-center space-x-2">
                 <Checkbox
-                  id={category.id}
-                  checked={selectedCategories.includes(category.id)}
-                  onCheckedChange={(checked) => handleCategoryChange(category.id, checked as boolean)}
+                  id={`category-${category.slug}`}
+                  checked={selectedCategories.includes(category.slug)}
+                  onCheckedChange={() => toggleCategory(category.slug)}
                 />
-                <label htmlFor={category.id} className="text-sm font-medium text-foreground cursor-pointer">
-                  {category.label}
-                </label>
+                <Label
+                  htmlFor={`category-${category.slug}`}
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  {category.name}
+                </Label>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Price Filter */}
-        <div className="mb-8">
-          <h3 className="mb-4 text-lg font-semibold text-foreground">Price</h3>
-          <div className="space-y-4">
-            <Slider
-              value={priceRange}
-              onValueChange={setPriceRange}
-              max={600}
-              min={0}
-              step={10}
-              className="w-full"
-            />
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>${priceRange[0]}</span>
-              <span>${priceRange[1]}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Variant Filters */}
-        {Object.entries(allVariants).map(([name, values]) => (
-          <div key={name} className="mb-8">
-            <h3 className="mb-4 text-lg font-semibold text-foreground">{name}</h3>
-            <div className="space-y-3">
-              {Array.from(values).map((value) => (
-                <div key={value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`${name}-${value}`}
-                    checked={selectedVariants[name]?.includes(value) || false}
-                    onCheckedChange={(checked) => handleVariantChange(name, value, checked as boolean)}
-                  />
-                  <label htmlFor={`${name}-${value}`} className="text-sm font-medium text-foreground cursor-pointer">
-                    {value}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+        )}
       </div>
+
+      {/* Price Range */}
+      <div>
+        <h3 className="font-semibold mb-3 text-foreground">Price Range</h3>
+        <div className="px-2">
+          <Slider
+            min={0}
+            max={1000}
+            step={10}
+            value={priceRange}
+            onValueChange={setPriceRange}
+            className="mb-4"
+          />
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>${priceRange[0]}</span>
+            <span>${priceRange[1]}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Apply Filters Button (for mobile) */}
       {onApplyFilters && (
-        <Button className="w-full" onClick={onApplyFilters}>
+        <Button onClick={onApplyFilters} className="w-full">
           Apply Filters
         </Button>
       )}
+
+      {/* Reset Filters */}
+      <Button
+        variant="outline"
+        className="w-full"
+        onClick={() => {
+          setSelectedCategories([])
+          setPriceRange([0, 1000])
+        }}
+      >
+        Reset Filters
+      </Button>
     </div>
   )
 }

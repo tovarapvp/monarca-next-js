@@ -1,12 +1,28 @@
 "use client"
 
-import AdminLayout from "@/components/admin/admin-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
-import { Package, ShoppingCart, Users, Plus, Eye, Edit, DollarSign } from "lucide-react"
+import { Package, ShoppingCart, Users, Plus, Eye, Edit, DollarSign, Loader2, AlertCircle } from "lucide-react"
+import { useDashboardStats } from "@/hooks/use-dashboard"
 
 export default function AdminDashboard() {
+  const { stats, loading, error } = useDashboardStats()
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Error loading dashboard data: {error.message}
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -23,8 +39,14 @@ export default function AdminDashboard() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-muted-foreground">+2 since last month</p>
+            {loading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats.totalProducts}</div>
+                <p className="text-xs text-muted-foreground">In your catalog</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -34,8 +56,14 @@ export default function AdminDashboard() {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">+3 since yesterday</p>
+            {loading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats.pendingOrders}</div>
+                <p className="text-xs text-muted-foreground">Awaiting processing</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -45,8 +73,14 @@ export default function AdminDashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$12,450</div>
-            <p className="text-xs text-muted-foreground">+15% since last month</p>
+            {loading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">${stats.monthlySales.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">Last 30 days</p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -56,8 +90,14 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">156</div>
-            <p className="text-xs text-muted-foreground">+12 this month</p>
+            {loading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{stats.activeCustomers}</div>
+                <p className="text-xs text-muted-foreground">Unique customers</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -97,29 +137,35 @@ export default function AdminDashboard() {
             <CardDescription>Latest activities in your store</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">New order received</p>
-                  <p className="text-xs text-gray-500">2 hours ago</p>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Dashboard connected to Supabase</p>
+                    <p className="text-xs text-gray-500">Real-time data enabled</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{stats.totalProducts} products in catalog</p>
+                    <p className="text-xs text-gray-500">View in Products page</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{stats.pendingOrders} pending orders</p>
+                    <p className="text-xs text-gray-500">View in Orders page</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Product updated</p>
-                  <p className="text-xs text-gray-500">4 hours ago</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">New customer registered</p>
-                  <p className="text-xs text-gray-500">1 day ago</p>
-                </div>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

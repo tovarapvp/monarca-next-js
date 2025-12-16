@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -9,12 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Eye, EyeOff, Lock, User } from "lucide-react"
+import { Eye, EyeOff, Lock, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { loginAdmin } from "@/lib/auth"
+import { supabase } from "@/lib/supabase/client"
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -25,27 +23,47 @@ export default function AdminLogin() {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simple authentication check (in production, this should be server-side)
-    if (username === "admin" && password === "monarca2024") {
-      loginAdmin(username)
-
-      toast({
-        title: "Access Granted",
-        description: "Welcome to the admin panel",
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       })
 
-      setTimeout(() => {
-        window.location.href = "/admin/dashboard"
-      }, 1000)
-    } else {
+      if (error) throw error
+
+      if (data.user) {
+        // Check if user has admin role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single()
+
+        if (profile?.role === 'admin') {
+          toast({
+            title: "Access Granted",
+            description: "Welcome to the admin panel",
+          })
+          router.push("/admin/dashboard")
+        } else {
+          await supabase.auth.signOut()
+          toast({
+            title: "Access Denied",
+            description: "You don't have admin privileges",
+            variant: "destructive",
+          })
+        }
+      }
+    } catch (error: any) {
+      console.error("Login error:", error)
       toast({
         title: "Authentication Error",
-        description: "Incorrect username or password",
+        description: error.message || "Incorrect email or password",
         variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (
@@ -57,21 +75,21 @@ export default function AdminLogin() {
           </div>
           <CardTitle className="text-2xl font-serif">Admin Panel</CardTitle>
           <CardDescription>
-            Enter your credentials to access the system
+            Sign in with your Supabase account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">Email</Label>
               <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="username"
-                  type="text"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="admin@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
                   required
                 />
@@ -102,18 +120,15 @@ export default function AdminLogin() {
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Logging in..." : "Login"}
+              {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Test credentials:</p>
-            <p>
-              Username: <code className="bg-muted px-1 rounded">admin</code>
-            </p>
-            <p>
-              Password: <code className="bg-muted px-1 rounded">monarca2024</code>
-            </p>
+            <p>Create an admin user in Supabase first:</p>
+            <code className="block bg-muted px-2 py-1 rounded mt-2 text-xs">
+              See database-setup.md for instructions
+            </code>
           </div>
         </CardContent>
       </Card>

@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -11,68 +10,74 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { isAdminAuthenticated } from "@/lib/auth"
-import { getProduct, updateProduct, type Product, type Variant } from "@/lib/products"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useProduct, updateProduct } from "@/hooks/use-products"
+import { ArrowLeft, Upload, Loader2, AlertCircle } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function EditProduct({ params }: { params: { id: string } }) {
-  const [product, setProduct] = useState<Product | null>(null)
+  const { product, loading, error } = useProduct(params.id)
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     price: "",
     category: "",
-    images: [] as string[],
-    variants: [] as Variant[],
-    inStock: true,
+    care_instructions: "",
+    shipping_info: "",
+    in_stock: true,
   })
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
 
   useEffect(() => {
-    loadProduct()
-  }, [router, params.id])
-
-  const loadProduct = () => {
-    const loadedProduct = getProduct(params.id)
-    if (!loadedProduct) {
-      toast({
-        title: "Error",
-        description: "Product not found",
-        variant: "destructive",
+    if (product) {
+      setFormData({
+        name: product.name,
+        description: product.description || "",
+        price: product.price.toString(),
+        category: product.category || "",
+        care_instructions: product.care_instructions || "",
+        shipping_info: product.shipping_info || "",
+        in_stock: product.in_stock ?? true,
       })
-      router.push("/admin/products")
-      return
     }
-
-    setProduct(loadedProduct)
-    setFormData({
-      name: loadedProduct.name,
-      description: loadedProduct.description,
-      price: loadedProduct.price.toString(),
-      category: loadedProduct.category,
-      images: loadedProduct.images,
-      variants: loadedProduct.variants,
-      inStock: loadedProduct.inStock,
-    })
-  }
+  }, [product])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Form validation
+    if (!formData.name.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Product name is required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid price",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      const updates: Partial<Product> = {
+      await updateProduct(params.id, {
         name: formData.name,
-        description: formData.description,
-        price: Number.parseFloat(formData.price),
-        category: formData.category,
-        images: formData.images,
-        variants: formData.variants,
-        inStock: formData.inStock,
-      }
-
-      updateProduct(params.id, updates)
+        description: formData.description || null,
+        price: parseFloat(formData.price),
+        category: formData.category || null,
+        care_instructions: formData.care_instructions || null,
+        shipping_info: formData.shipping_info || null,
+        in_stock: formData.in_stock,
+      })
 
       toast({
         title: "Product updated",
@@ -81,9 +86,10 @@ export default function EditProduct({ params }: { params: { id: string } }) {
 
       router.push("/admin/products")
     } catch (error) {
+      console.error("Error updating product:", error)
       toast({
         title: "Error",
-        description: "There was an error updating the product.",
+        description: "There was an error updating the product. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -91,33 +97,35 @@ export default function EditProduct({ params }: { params: { id: string } }) {
     }
   }
 
-  const addVariant = () => {
-    setFormData({
-      ...formData,
-      variants: [...formData.variants, { name: "", value: "", price: undefined }],
-    })
-  }
-
-  const removeVariant = (index: number) => {
-    setFormData({
-      ...formData,
-      variants: formData.variants.filter((_, i) => i !== index),
-    })
-  }
-
-  const updateVariant = (index: number, field: keyof Variant, value: string | number) => {
-    const updatedVariants = formData.variants.map((variant, i) =>
-      i === index ? { ...variant, [field]: value } : variant,
+  if (error) {
+    return (
+      <div className="p-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Error loading product: {error.message}
+          </AlertDescription>
+        </Alert>
+        <Link href="/admin/products" className="mt-4 inline-block">
+          <Button variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Products
+          </Button>
+        </Link>
+      </div>
     )
-    setFormData({ ...formData, variants: updatedVariants })
   }
 
-  if (!product) {
-    return <div>Loading...</div>
+  if (loading || !product) {
+    return (
+      <div className="p-8 flex items-center justify-center py-12">
+        <Loader2 className="h-12 w-12 animate-spin text-gray-400" />
+      </div>
+    )
   }
 
   return (
-    <div>
+    <div className="p-8">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Link href="/admin/products">
@@ -142,7 +150,7 @@ export default function EditProduct({ params }: { params: { id: string } }) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="name">Product Name</Label>
+                  <Label htmlFor="name">Product Name *</Label>
                   <Input
                     id="name"
                     value={formData.name}
@@ -160,17 +168,17 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Describe the product features and details..."
                     rows={4}
-                    required
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="price">Base Price (USD)</Label>
+                    <Label htmlFor="price">Price (USD) *</Label>
                     <Input
                       id="price"
                       type="number"
                       step="0.01"
+                      min="0"
                       value={formData.price}
                       onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                       placeholder="0.00"
@@ -199,48 +207,32 @@ export default function EditProduct({ params }: { params: { id: string } }) {
               </CardContent>
             </Card>
 
-            {/* Variants */}
             <Card>
               <CardHeader>
-                <CardTitle>Product Variants</CardTitle>
+                <CardTitle>Additional Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {formData.variants.map((variant, index) => (
-                  <div key={index} className="flex gap-4 items-end">
-                    <div className="flex-1">
-                      <Label>Variant Name</Label>
-                      <Input
-                        value={variant.name}
-                        onChange={(e) => updateVariant(index, "name", e.target.value)}
-                        placeholder="e.g., Size, Color, Material"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <Label>Value</Label>
-                      <Input
-                        value={variant.value}
-                        onChange={(e) => updateVariant(index, "value", e.target.value)}
-                        placeholder="e.g., S, Gold, Silver"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <Label>Price (optional)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={variant.price || ""}
-                        onChange={(e) => updateVariant(index, "price", e.target.value ? Number.parseFloat(e.target.value) : undefined)}
-                        placeholder="Overrides base price"
-                      />
-                    </div>
-                    <Button type="button" variant="outline" size="sm" onClick={() => removeVariant(index)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button type="button" variant="outline" onClick={addVariant}>
-                  Add Variant
-                </Button>
+                <div>
+                  <Label htmlFor="care_instructions">Care Instructions</Label>
+                  <Textarea
+                    id="care_instructions"
+                    value={formData.care_instructions}
+                    onChange={(e) => setFormData({ ...formData, care_instructions: e.target.value })}
+                    placeholder="How to care for this product..."
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="shipping_info">Shipping Information</Label>
+                  <Textarea
+                    id="shipping_info"
+                    value={formData.shipping_info}
+                    onChange={(e) => setFormData({ ...formData, shipping_info: e.target.value })}
+                    placeholder="Shipping details and estimated delivery time..."
+                    rows={3}
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -254,11 +246,11 @@ export default function EditProduct({ params }: { params: { id: string } }) {
               <CardContent>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                   <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600 mb-2">Drag and drop images here or click to select</p>
+                  <p className="text-sm text-gray-600 mb-2">Image upload coming soon</p>
                   <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  Note: In this demo version, images are kept as they are configured.
+                  Note: Image upload functionality will be available in a future update.
                 </p>
               </CardContent>
             </Card>
@@ -271,24 +263,31 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    id="inStock"
-                    checked={formData.inStock}
-                    onChange={(e) => setFormData({ ...formData, inStock: e.target.checked })}
+                    id="in_stock"
+                    checked={formData.in_stock}
+                    onChange={(e) => setFormData({ ...formData, in_stock: e.target.checked })}
                     className="rounded"
                   />
-                  <Label htmlFor="inStock">Product in stock</Label>
+                  <Label htmlFor="in_stock">Product in stock</Label>
                 </div>
               </CardContent>
             </Card>
 
             <div className="flex gap-4">
               <Link href="/admin/products" className="flex-1">
-                <Button type="button" variant="outline" className="w-full">
+                <Button type="button" variant="outline" className="w-full" disabled={isLoading}>
                   Cancel
                 </Button>
               </Link>
               <Button type="submit" disabled={isLoading} className="flex-1">
-                {isLoading ? "Saving..." : "Save Changes"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
               </Button>
             </div>
           </div>

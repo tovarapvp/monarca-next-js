@@ -5,83 +5,38 @@ import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { Filter, X } from "lucide-react"
+import { Filter, X, Loader2 } from "lucide-react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ProductFilters } from "@/components/product-filters"
-
-const products = [
-  {
-    id: 1,
-    name: "Golden Butterfly Necklace",
-    price: 299,
-    category: "necklaces",
-    color: "gold",
-    image: "/luxury-jewelry.png",
-  },
-  {
-    id: 2,
-    name: "Pearl Drop Earrings",
-    price: 199,
-    category: "earrings",
-    color: "pearl",
-    image: "/luxury-jewelry.png",
-  },
-  {
-    id: 3,
-    name: "Rose Gold Bracelet",
-    price: 249,
-    category: "bracelets",
-    color: "rose-gold",
-    image: "/luxury-jewelry.png",
-  },
-  {
-    id: 4,
-    name: "Diamond Stud Earrings",
-    price: 399,
-    category: "earrings",
-    color: "silver",
-    image: "/luxury-jewelry.png",
-  },
-  { id: 5, name: "Emerald Pendant", price: 449, category: "necklaces", color: "gold", image: "/luxury-jewelry.png" },
-  {
-    id: 6,
-    name: "Silver Chain Bracelet",
-    price: 179,
-    category: "bracelets",
-    color: "silver",
-    image: "/luxury-jewelry.png",
-  },
-  { id: 7, name: "Ruby Statement Ring", price: 599, category: "rings", color: "gold", image: "/luxury-jewelry.png" },
-  {
-    id: 8,
-    name: "Sapphire Hoop Earrings",
-    price: 329,
-    category: "earrings",
-    color: "gold",
-    image: "/luxury-jewelry.png",
-  },
-]
-
-import { getProducts, type Product } from "@/lib/products"
+import { useProducts } from "@/hooks/use-products"
+import { useSearchParams } from "next/navigation"
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([])
+  const searchParams = useSearchParams()
+  const categoryParam = searchParams.get('category')
+
+  const { products, loading, error } = useProducts()
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedVariants, setSelectedVariants] = useState<{ [key: string]: string[] }>({})
   const [priceRange, setPriceRange] = useState([0, 600])
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false)
 
+  // Set category filter if coming from URL parameter
   useEffect(() => {
-    setProducts(getProducts())
-  }, [])
+    if (categoryParam) {
+      setSelectedCategories([categoryParam])
+    }
+  }, [categoryParam])
 
   const filteredProducts = products.filter((product) => {
-    const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(product.category)
+    const categoryMatch = selectedCategories.length === 0 || selectedCategories.includes(product.category || '')
     const priceMatch = product.price >= priceRange[0] && product.price <= priceRange[1]
-    
+
     const variantMatch = Object.entries(selectedVariants).every(([name, values]) => {
       if (values.length === 0) return true;
-      return product.variants.some(variant => variant.name === name && values.includes(variant.value));
+      // Since variants are in a separate table now, we'll handle this differently
+      // For now, just return true to allow products through
+      return true;
     });
 
     return categoryMatch && priceMatch && variantMatch
@@ -101,6 +56,17 @@ export default function ProductsPage() {
       document.body.style.overflow = ""
     }
   }, [isFilterMenuOpen])
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Unable to load products</h1>
+          <p className="text-muted-foreground">Please try again later.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -173,9 +139,13 @@ export default function ProductsPage() {
                     <Link href={`/products/${product.id}`}>
                       <div className="aspect-square overflow-hidden rounded-t-lg">
                         <img
-                          src={`${product.images[0]}?height=300&width=300&query=${product.name} luxury jewelry`}
+                          src={
+                            product.images && product.images.length > 0
+                              ? `${product.images[0]}?height=300&width=300&query=${product.name} luxury jewelry`
+                              : "/placeholder.svg"
+                          }
                           alt={product.name}
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                          className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                         />
                       </div>
                       <div className="p-4">

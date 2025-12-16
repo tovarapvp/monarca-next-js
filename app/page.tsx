@@ -6,6 +6,8 @@ import Image from "next/image"
 import { ChevronLeft, ChevronRight, Menu, Star, Users, Award, Shield, ChevronDown, Globe } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
+import { useFeaturedProducts } from "@/hooks/use-products"
+import { useCategories } from "@/hooks/use-categories"
 
 interface CartItem {
   id: number;
@@ -20,6 +22,10 @@ export default function Home() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [cartCount, setCartCount] = useState(0)
+
+  // Fetch featured products and categories from Supabase
+  const { products: featuredProducts, loading, error } = useFeaturedProducts(4)
+  const { categories, loading: categoriesLoading } = useCategories()
 
   const languages = [
     { code: "ENG", label: "English" },
@@ -168,38 +174,31 @@ export default function Home() {
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <h2 className="mb-12 text-center text-4xl font-serif font-bold text-foreground">Shop by Category</h2>
-          <div className="grid gap-8 md:grid-cols-3">
-            <Link href="/products?category=necklaces" className="group relative overflow-hidden rounded-lg">
-              <img
-                src="/placeholder-oe5hu.png"
-                alt="Necklaces"
-                className="h-80 w-full object-cover transition-transform group-hover:scale-105 duration-500"
-              />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-colors">
-                <h3 className="text-2xl font-serif font-bold text-white">Necklaces</h3>
-              </div>
-            </Link>
-            <Link href="/products?category=earrings" className="group relative overflow-hidden rounded-lg">
-              <img
-                src="/gold-earrings-display.png"
-                alt="Earrings"
-                className="h-80 w-full object-cover transition-transform group-hover:scale-105 duration-500"
-              />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-colors">
-                <h3 className="text-2xl font-serif font-bold text-white">Earrings</h3>
-              </div>
-            </Link>
-            <Link href="/products?category=bracelets" className="group relative overflow-hidden rounded-lg">
-              <img
-                src="/placeholder-hwi2p.png"
-                alt="Bracelets"
-                className="h-80 w-full object-cover transition-transform group-hover:scale-105 duration-500"
-              />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-colors">
-                <h3 className="text-2xl font-serif font-bold text-white">Bracelets</h3>
-              </div>
-            </Link>
-          </div>
+
+          {categoriesLoading ? (
+            <div className="grid gap-8 md:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="relative overflow-hidden rounded-lg">
+                  <div className="h-80 w-full bg-muted animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-8 md:grid-cols-3">
+              {categories.slice(0, 3).map((category) => (
+                <Link key={category.id} href={`/products?category=${category.slug}`} className="group relative overflow-hidden rounded-lg">
+                  <img
+                    src={category.image_url || "/placeholder-oe5hu.png"}
+                    alt={category.name}
+                    className="h-80 w-full object-cover transition-transform group-hover:scale-105 duration-500"
+                  />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-colors">
+                    <h3 className="text-2xl font-serif font-bold text-white">{category.name}</h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -208,53 +207,58 @@ export default function Home() {
         <div className="container mx-auto max-w-6xl">
           <div className="mb-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h2 className="text-3xl sm:text-4xl font-serif font-bold text-foreground text-center sm:text-left">New Arrivals</h2>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="hover:bg-primary hover:text-primary-foreground transition-colors bg-transparent"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="hover:bg-primary hover:text-primary-foreground transition-colors bg-transparent"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+          </div>
+
+          {loading ? (
+            <div className="grid gap-6 md:grid-cols-4">
+              {[1, 2, 3, 4].map((item) => (
+                <Card key={item} className="border-border bg-card">
+                  <CardContent className="p-0">
+                    <div className="aspect-square bg-muted animate-pulse rounded-t-lg"></div>
+                    <div className="p-4 space-y-2">
+                      <div className="h-4 bg-muted animate-pulse rounded"></div>
+                      <div className="h-6 bg-muted animate-pulse rounded w-20"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </div>
-          <div className="grid gap-6 md:grid-cols-4">
-            {[1, 2, 3, 4].map((item) => (
-              <Card
-                key={item}
-                className="group cursor-pointer border-border bg-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
-              >
-                <CardContent className="p-0">
-                  <Link href={`/products/${item}`}>
-                    <div className="aspect-square overflow-hidden rounded-t-lg">
-                      <img
-                        src={`/luxury-jewelry.png?height=300&width=300&query=luxury jewelry product ${item} gold necklace earrings bracelet`}
-                        alt={`New Arrival ${item}`}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-105 duration-500"
-                      />
-                    </div>
-                    <div className="p-4">
-                      <h3 className="mb-2 font-serif font-semibold text-card-foreground">Elegant Gold Piece</h3>
-                      <p className="text-lg font-bold text-primary">$299</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star key={star} className="h-3 w-3 fill-primary text-primary" />
-                        ))}
-                        <span className="text-xs text-muted-foreground ml-1">(24)</span>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Unable to load products at the moment.</p>
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-4">
+              {featuredProducts.slice(0, 4).map((product) => (
+                <Card
+                  key={product.id}
+                  className="group cursor-pointer border-border bg-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                >
+                  <CardContent className="p-0">
+                    <Link href={`/products/${product.id}`}>
+                      <div className="aspect-square overflow-hidden rounded-t-lg">
+                        <img
+                          src={product.images?.[0] || "/luxury-jewelry.png"}
+                          alt={product.name}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105 duration-500"
+                        />
                       </div>
-                    </div>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                      <div className="p-4">
+                        <h3 className="mb-2 font-serif font-semibold text-card-foreground line-clamp-2">{product.name}</h3>
+                        <p className="text-lg font-bold text-primary">${product.price}</p>
+                        <div className="flex items-center gap-1 mt-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star key={star} className="h-3 w-3 fill-primary text-primary" />
+                          ))}
+                          <span className="text-xs text-muted-foreground ml-1">(24)</span>
+                        </div>
+                      </div>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
