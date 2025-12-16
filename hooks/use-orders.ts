@@ -110,3 +110,74 @@ export async function updateOrderStatus(id: string, status: Tables<'orders'>['st
     if (error) throw error
     return data
 }
+
+export interface NewOrderData {
+    customer_name: string
+    customer_email: string
+    status?: 'inquiry' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
+    total: number
+    shipping_address: {
+        address: string
+        city: string
+        state: string
+        zip: string
+        country: string
+        phone?: string
+    }
+    notes?: string
+}
+
+export interface NewOrderItem {
+    product_id: string
+    quantity: number
+    price_at_purchase: number
+    variant_info?: string
+}
+
+export async function createOrder(orderData: NewOrderData): Promise<Order> {
+    const { data, error } = await supabase
+        .from('orders')
+        .insert({
+            customer_name: orderData.customer_name,
+            customer_email: orderData.customer_email,
+            status: orderData.status || 'pending',
+            total: orderData.total,
+            shipping_address: orderData.shipping_address,
+        })
+        .select()
+        .single()
+
+    if (error) throw error
+    return data
+}
+
+export async function createOrderItems(orderId: string, items: NewOrderItem[]): Promise<void> {
+    const itemsToInsert = items.map(item => ({
+        order_id: orderId,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price_at_purchase: item.price_at_purchase,
+        variant_info: item.variant_info || null,
+    }))
+
+    const { error } = await supabase
+        .from('order_items')
+        .insert(itemsToInsert)
+
+    if (error) throw error
+}
+
+export async function createOrderWithItems(
+    orderData: NewOrderData,
+    items: NewOrderItem[]
+): Promise<Order> {
+    // Create the order first
+    const order = await createOrder(orderData)
+
+    // Then add items
+    if (items.length > 0) {
+        await createOrderItems(order.id, items)
+    }
+
+    return order
+}

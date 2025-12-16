@@ -16,6 +16,29 @@ import { ArrowLeft, Upload, Loader2, X, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { uploadMultipleImages } from "@/lib/image-upload"
 import Image from "next/image"
+import { CreateCategoryDialog } from "@/components/admin/create-category-dialog"
+import { AdvancedProductVariantsSection } from "@/components/admin/advanced-product-variants-section"
+import { createProductOption, createOptionValue, createProductVariant } from "@/hooks/use-product-variants"
+
+interface NewOption {
+  name: string
+  values: string[]
+}
+
+interface NewVariant {
+  optionValues: { optionName: string; value: string }[]
+  sku: string
+  price: number
+  compareAtPrice: number | null
+  pricingType: 'fixed' | 'per_unit'
+  unitType: string | null
+  pricePerUnit: number | null
+  minQuantity: number
+  maxQuantity: number | null
+  stockQuantity: number
+  trackInventory: boolean
+  isAvailable: boolean
+}
 
 export default function NewProduct() {
   const [formData, setFormData] = useState({
@@ -41,10 +64,12 @@ export default function NewProduct() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isUploadingImages, setIsUploadingImages] = useState(false)
+  const [productOptions, setProductOptions] = useState<NewOption[]>([])
+  const [productVariants, setProductVariants] = useState<NewVariant[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { toast } = useToast()
-  const { categories, loading: categoriesLoading } = useCategories()
+  const { categories, loading: categoriesLoading, refetch: refetchCategories } = useCategories()
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -136,7 +161,7 @@ export default function NewProduct() {
         ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
         : null
 
-      await createProduct({
+      const product = await createProduct({
         name: formData.name,
         description: formData.description || null,
         price: formData.price ? parseFloat(formData.price) : (formData.pricing_type === "per_unit" && formData.price_per_unit ? parseFloat(formData.price_per_unit) : 0),
@@ -158,8 +183,49 @@ export default function NewProduct() {
           : null,
         min_quantity: formData.min_quantity ? parseFloat(formData.min_quantity) : 1,
         max_quantity: formData.max_quantity ? parseFloat(formData.max_quantity) : null,
+        has_variants: productVariants.length > 0,
         created_at: new Date().toISOString(),
       })
+
+      // Create options and variants if any
+      if (productOptions.length > 0 && productVariants.length > 0 && product) {
+        // Create a map to store option value IDs by their name
+        const optionValueMap: Record<string, Record<string, string>> = {}
+
+        // First, create all options and their values
+        for (let i = 0; i < productOptions.length; i++) {
+          const opt = productOptions[i]
+          const createdOption = await createProductOption(product.id, opt.name, i)
+          optionValueMap[opt.name] = {}
+
+          for (let j = 0; j < opt.values.length; j++) {
+            const val = opt.values[j]
+            const createdValue = await createOptionValue(createdOption.id, val, j)
+            optionValueMap[opt.name][val] = createdValue.id
+          }
+        }
+
+        // Then, create all variants with their option value links
+        for (const variant of productVariants) {
+          const optionValueIds = variant.optionValues
+            .map(ov => optionValueMap[ov.optionName]?.[ov.value])
+            .filter(Boolean) as string[]
+
+          await createProductVariant(product.id, {
+            sku: variant.sku,
+            price: variant.price,
+            compare_at_price: variant.compareAtPrice,
+            pricing_type: variant.pricingType,
+            unit_type: variant.unitType,
+            price_per_unit: variant.pricePerUnit,
+            min_quantity: variant.minQuantity,
+            max_quantity: variant.maxQuantity,
+            stock_quantity: variant.stockQuantity,
+            track_inventory: variant.trackInventory,
+            is_available: variant.isAvailable,
+          }, optionValueIds)
+        }
+      }
 
       toast({
         title: "Product created",
@@ -231,12 +297,12 @@ export default function NewProduct() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <Label htmlFor="category">Category *</Label>
-                      <Link href="/admin/categories/new">
-                        <Button variant="ghost" size="sm" type="button" className="h-6 text-xs">
-                          <Plus className="h-3 w-3 mr-1" />
-                          New
-                        </Button>
-                      </Link>
+                      <CreateCategoryDialog
+                        onCategoryCreated={(categoryId) => {
+                          refetchCategories()
+                          setFormData({ ...formData, category: categoryId })
+                        }}
+                      />
                     </div>
                     <Select
                       value={formData.category}
@@ -444,6 +510,16 @@ export default function NewProduct() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Product Variants (SKUs) */}
+            <AdvancedProductVariantsSection
+              options={productOptions}
+              setOptions={setProductOptions}
+              variants={productVariants}
+              setVariants={setProductVariants}
+              basePrice={parseFloat(formData.price) || 0}
+              disabled={isLoading}
+            />
 
             {/* Additional Information */}
             <Card>

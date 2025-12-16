@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ShoppingCart, Package2, Eye, Loader2, AlertCircle } from "lucide-react"
+import { ShoppingCart, Package2, Eye, Loader2, AlertCircle, Plus } from "lucide-react"
 import { useOrders, updateOrderStatus } from "@/hooks/use-orders"
 import { useToast } from "@/hooks/use-toast"
 
@@ -69,9 +69,17 @@ export default function AdminOrders() {
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-serif text-gray-800 mb-2">Order Management</h1>
-        <p className="text-gray-600">Manage your store's orders</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-serif text-gray-800 mb-2">Order Management</h1>
+          <p className="text-gray-600">Manage your store&apos;s orders</p>
+        </div>
+        <Link href="/admin/orders/new">
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Order
+          </Button>
+        </Link>
       </div>
 
       {/* Loading State */}

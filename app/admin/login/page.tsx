@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Eye, EyeOff, Lock, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { supabase } from "@/lib/supabase/client"
+import { loginAdmin } from "@/lib/auth"
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("")
@@ -40,6 +41,8 @@ export default function AdminLogin() {
           .single()
 
         if (profile?.role === 'admin') {
+          // Set admin session cookie
+          loginAdmin(email)
           toast({
             title: "Access Granted",
             description: "Welcome to the admin panel",

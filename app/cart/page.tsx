@@ -14,6 +14,7 @@ interface CartItem {
   price: number;
   image: string;
   quantity: number;
+  productVariantId?: string;  // Reference to product_variants SKU
   variant?: { name: string; value: string };
   unitType?: string;
   isPerUnit?: boolean;
@@ -53,11 +54,21 @@ export default function CartPage() {
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
+  const formatCartItemForMessage = (item: CartItem) => {
+    let details = `- ${item.quantity}x ${item.name}`
+    if (item.variant && item.variant.value) {
+      details += `\n  └ ${item.variant.value}`
+    }
+    if (item.isPerUnit && item.unitType) {
+      details += ` (${item.quantity} ${item.unitType}s)`
+    }
+    details += `\n  Price: $${item.price.toFixed(2)} each | Subtotal: $${(item.price * item.quantity).toFixed(2)}`
+    return details
+  }
+
   const handleWhatsAppCheckout = () => {
-    const itemsDetails = cartItems
-      .map((item) => `- ${item.quantity}x ${item.name}${item.variant ? ` (${item.variant.name}: ${item.variant.value})` : ""} (${item.price.toFixed(2)} each)`)
-      .join("\n")
-    const message = `Hello MONARCA! 👋\n\nI would like to place an order with the following items from my cart:\n\n${itemsDetails}\n\nSubtotal: ${subtotal.toFixed(2)}\n\nPlease let me know the next steps for payment and shipping. Thank you!`
+    const itemsDetails = cartItems.map(formatCartItemForMessage).join("\n\n")
+    const message = `Hello MONARCA! 👋\n\nI would like to place an order with the following items from my cart:\n\n${itemsDetails}\n\n─────────────────\nTotal: $${subtotal.toFixed(2)}\n\nPlease let me know the next steps for payment and shipping. Thank you!`
     const whatsappUrl = `https://wa.me/1234567890?text=${encodeURIComponent(message)}`
     window.open(whatsappUrl, "_blank")
   }
@@ -65,10 +76,8 @@ export default function CartPage() {
   const handleEmailCheckout = () => {
     const today = new Date().toLocaleDateString("en-US")
     const subject = `Order from MONARCA cart - ${today}`
-    const itemsDetails = cartItems
-      .map((item) => `- ${item.quantity}x ${item.name}${item.variant ? ` (${item.variant.name}: ${item.variant.value})` : ""} (${item.price.toFixed(2)} each)`)
-      .join("\n")
-    const body = `Hello MONARCA! 👋\n\nI would like to place an order with the following items from my cart:\n\n${itemsDetails}\n\nSubtotal: ${subtotal.toFixed(2)}\n\nPlease let me know the next steps for payment and shipping. Thank you!`
+    const itemsDetails = cartItems.map(formatCartItemForMessage).join("\n\n")
+    const body = `Hello MONARCA! 👋\n\nI would like to place an order with the following items from my cart:\n\n${itemsDetails}\n\n─────────────────\nTotal: $${subtotal.toFixed(2)}\n\nPlease let me know the next steps for payment and shipping. Thank you!`
     const emailUrl = `mailto:orders@monarca.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
     window.location.href = emailUrl
   }

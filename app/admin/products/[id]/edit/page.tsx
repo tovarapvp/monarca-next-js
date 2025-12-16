@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -14,9 +14,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useProduct, updateProduct } from "@/hooks/use-products"
 import { ArrowLeft, Upload, Loader2, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { ProductVariantsSection } from "@/components/admin/product-variants-section"
+import { useProductVariants, NewVariant, createMultipleVariants, deleteProductVariants } from "@/hooks/use-variants"
 
-export default function EditProduct({ params }: { params: { id: string } }) {
-  const { product, loading, error } = useProduct(params.id)
+export default function EditProduct({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params)
+  const { product, loading, error } = useProduct(resolvedParams.id)
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -27,8 +30,12 @@ export default function EditProduct({ params }: { params: { id: string } }) {
     in_stock: true,
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [variants, setVariants] = useState<NewVariant[]>([])
   const router = useRouter()
   const { toast } = useToast()
+
+  // Fetch existing variants
+  const { variants: existingVariants, loading: variantsLoading } = useProductVariants(resolvedParams.id)
 
   useEffect(() => {
     if (product) {
@@ -43,6 +50,17 @@ export default function EditProduct({ params }: { params: { id: string } }) {
       })
     }
   }, [product])
+
+  // Load existing variants into state
+  useEffect(() => {
+    if (existingVariants.length > 0) {
+      setVariants(existingVariants.map(v => ({
+        name: v.name,
+        value: v.value,
+        price: v.price,
+      })))
+    }
+  }, [existingVariants])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -69,7 +87,7 @@ export default function EditProduct({ params }: { params: { id: string } }) {
     setIsLoading(true)
 
     try {
-      await updateProduct(params.id, {
+      await updateProduct(resolvedParams.id, {
         name: formData.name,
         description: formData.description || null,
         price: parseFloat(formData.price),
@@ -78,6 +96,12 @@ export default function EditProduct({ params }: { params: { id: string } }) {
         shipping_info: formData.shipping_info || null,
         in_stock: formData.in_stock,
       })
+
+      // Update variants: delete existing and create new ones
+      await deleteProductVariants(resolvedParams.id)
+      if (variants.length > 0) {
+        await createMultipleVariants(resolvedParams.id, variants)
+      }
 
       toast({
         title: "Product updated",
@@ -235,6 +259,13 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Product Variants */}
+            <ProductVariantsSection
+              variants={variants}
+              onChange={setVariants}
+              disabled={isLoading}
+            />
           </div>
 
           {/* Sidebar */}

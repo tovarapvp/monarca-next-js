@@ -6,19 +6,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/hooks/use-toast"
 import Image from "next/image"
 import Link from "next/link"
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, use, useCallback } from "react"
 import { ChevronLeft, ChevronRight, Mail, MessageCircle, ShoppingCart, Menu, Loader2, AlertCircle } from "lucide-react"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { supabase } from "@/lib/supabase/client"
 import type { Tables } from "@/lib/types/database"
+import { useProductOptions, useProductVariants, ProductVariant, ProductOption } from "@/hooks/use-product-variants"
+import { VariantSelector } from "@/components/product/variant-selector"
 
 type Product = Tables<'products'>
 
 interface CartItem {
   id: string
   productId: string
+  productVariantId?: string  // New: reference to SKU variant
   name: string
   price: number
   image: string
@@ -34,10 +36,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
-  const [selectedVariant, setSelectedVariant] = useState<any>(null)
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
   const [cartCount, setCartCount] = useState(0)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [quantity, setQuantity] = useState(1)
+
+  // Fetch options and variants for this product (new SKU system)
+  const { options, loading: optionsLoading } = useProductOptions(product?.id || null)
+  const { variants, loading: variantsLoading } = useProductVariants(product?.id || null)
 
   // Fetch product from Supabase
   useEffect(() => {
@@ -111,19 +118,102 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     )
   }
 
-  const handleVariantChange = (value: string) => {
-    setSelectedVariant(value)
+  // Handle variant selection callback from VariantSelector
+  const handleVariantSelect = useCallback((variant: ProductVariant | null, opts: Record<string, string>) => {
+    setSelectedVariant(variant)
+    setSelectedOptions(opts)
+  }, [])
+
+  // Determine if product has the new SKU-based variants
+  const hasSkuVariants = options.length > 0 && variants.length > 0
+
+  // Get display price based on selected variant or product base price
+  const getDisplayPrice = (): number => {
+    if (hasSkuVariants && selectedVariant) {
+      if (selectedVariant.pricing_type === 'per_unit' && selectedVariant.price_per_unit) {
+        return selectedVariant.price_per_unit * quantity
+      }
+      return selectedVariant.price
+    }
+    // Fallback to product price
+    if (product.pricing_type === 'per_unit' && product.price_per_unit) {
+      return product.price_per_unit * quantity
+    }
+    return product.price
+  }
+
+  // Check if add to cart should be enabled
+  const canAddToCart = (): boolean => {
+    if (!hasSkuVariants) return true // No variants, always enabled
+    if (!selectedVariant) return false // Has variants but none selected
+    if (!selectedVariant.is_available) return false
+    if (selectedVariant.track_inventory && selectedVariant.stock_quantity <= 0 && !selectedVariant.allow_backorder) {
+      return false
+    }
+    return true
+  }
+
+  // Get stock status message
+  const getStockStatus = (): { text: string; available: boolean } | null => {
+    if (!hasSkuVariants || !selectedVariant) return null
+
+    if (!selectedVariant.is_available) {
+      return { text: "Not Available", available: false }
+    }
+    if (!selectedVariant.track_inventory) {
+      return { text: "In Stock", available: true }
+    }
+    if (selectedVariant.stock_quantity <= 0) {
+      if (selectedVariant.allow_backorder) {
+        return { text: "Available for Backorder", available: true }
+      }
+      return { text: "Out of Stock", available: false }
+    }
+    if (selectedVariant.stock_quantity < 5) {
+      return { text: `Only ${selectedVariant.stock_quantity} left!`, available: true }
+    }
+    return { text: "In Stock", available: true }
   }
 
   const handleAddToCart = () => {
     const savedCart = localStorage.getItem("monarca-cart")
     let cartItems: CartItem[] = savedCart ? JSON.parse(savedCart) : []
 
-    const price = product.pricing_type === "per_unit" && product.price_per_unit
-      ? product.price_per_unit
-      : product.price
+    // Calculate price based on variant or product
+    let finalPrice: number
+    let unitType: string | undefined
+    let isPerUnit = false
+    let variantDescription: string | undefined
+    let cartItemId: string
 
-    const cartItemId = selectedVariant ? `${product.id}-${selectedVariant}` : product.id
+    if (hasSkuVariants && selectedVariant) {
+      // Using new SKU system
+      if (selectedVariant.pricing_type === 'per_unit' && selectedVariant.price_per_unit) {
+        finalPrice = selectedVariant.price_per_unit
+        unitType = selectedVariant.unit_type || undefined
+        isPerUnit = true
+      } else {
+        finalPrice = selectedVariant.price
+      }
+
+      // Build variant description from selected options
+      variantDescription = Object.entries(selectedOptions)
+        .map(([name, value]) => `${name}: ${value}`)
+        .join(', ')
+
+      // Unique cart ID includes variant ID
+      cartItemId = `${product.id}-${selectedVariant.id}`
+    } else {
+      // Fallback to product pricing
+      if (product.pricing_type === 'per_unit' && product.price_per_unit) {
+        finalPrice = product.price_per_unit
+        unitType = product.unit_type || undefined
+        isPerUnit = true
+      } else {
+        finalPrice = product.price
+      }
+      cartItemId = product.id
+    }
 
     const existingItemIndex = cartItems.findIndex((item) => item.id === cartItemId)
 
@@ -133,24 +223,24 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       cartItems.push({
         id: cartItemId,
         productId: product.id,
+        productVariantId: selectedVariant?.id || undefined,
         name: product.name,
-        price,
+        price: finalPrice,
         quantity,
-        image: product.images && product.images[0] ? product.images[0] : "/placeholder.svg",
-        variant: selectedVariant ? { name: "Option", value: selectedVariant } : undefined,
-        unitType: product.pricing_type === "per_unit" ? product.unit_type || undefined : undefined,
-        isPerUnit: product.pricing_type === "per_unit",
+        image: selectedVariant?.images?.[0] || (product.images && product.images[0]) || "/placeholder.svg",
+        variant: variantDescription ? { name: "Options", value: variantDescription } : undefined,
+        unitType,
+        isPerUnit,
       })
     }
 
     localStorage.setItem("monarca-cart", JSON.stringify(cartItems))
-    // Count items: per-unit products count as 1, regular products count by quantity
     const count = cartItems.reduce((acc, item) => acc + (item.isPerUnit ? 1 : item.quantity), 0)
     setCartCount(count)
     window.dispatchEvent(new CustomEvent("cart-updated"))
 
-    const itemDescription = product.pricing_type === "per_unit"
-      ? `${quantity} ${product.unit_type}(s) of ${product.name}`
+    const itemDescription = isPerUnit
+      ? `${quantity} ${unitType}(s) of ${product.name}`
       : `${product.name}`
 
     toast({
@@ -184,9 +274,19 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     window.location.href = emailUrl
   }
 
-  const displayPrice = product.pricing_type === "per_unit" && product.price_per_unit
-    ? product.price_per_unit * quantity
-    : product.price
+  // Get display price using new function
+  const displayPrice = getDisplayPrice()
+
+  // Get unit info for per-unit display
+  const isPerUnitPricing = hasSkuVariants && selectedVariant
+    ? selectedVariant.pricing_type === 'per_unit'
+    : product.pricing_type === 'per_unit'
+  const unitTypeDisplay = hasSkuVariants && selectedVariant
+    ? selectedVariant.unit_type
+    : product.unit_type
+  const pricePerUnitDisplay = hasSkuVariants && selectedVariant
+    ? selectedVariant.price_per_unit
+    : product.price_per_unit
 
   const images = product.images && product.images.length > 0
     ? product.images
@@ -242,9 +342,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               <h1 className="text-4xl font-serif font-bold text-foreground mb-4">{product.name}</h1>
               <p className="text-3xl font-bold text-primary mb-6">
                 ${displayPrice.toFixed(2)}
-                {product.pricing_type === "per_unit" && product.unit_type && (
+                {isPerUnitPricing && unitTypeDisplay && (
                   <span className="text-lg text-muted-foreground ml-2">
-                    (${product.price_per_unit} per {product.unit_type})
+                    (${pricePerUnitDisplay} per {unitTypeDisplay})
                   </span>
                 )}
               </p>
@@ -252,6 +352,24 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <p className="text-lg text-muted-foreground leading-relaxed">{product.description}</p>
               )}
             </div>
+
+            {/* Product Variants Selector */}
+            {hasSkuVariants && (
+              <div className="space-y-4">
+                <VariantSelector
+                  options={options}
+                  variants={variants}
+                  onVariantSelect={handleVariantSelect}
+                />
+
+                {/* Stock Status */}
+                {getStockStatus() && (
+                  <div className={`text-sm font-medium ${getStockStatus()?.available ? 'text-green-600' : 'text-red-600'}`}>
+                    {getStockStatus()?.text}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Quantity selector for per-unit products */}
             {product.pricing_type === "per_unit" && (
@@ -298,9 +416,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 size="lg"
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
                 onClick={handleAddToCart}
+                disabled={!canAddToCart()}
               >
                 <ShoppingCart className="h-5 w-5" />
-                Add to Cart
+                {hasSkuVariants && !selectedVariant
+                  ? "Select Options"
+                  : !canAddToCart()
+                    ? "Out of Stock"
+                    : "Add to Cart"}
               </Button>
 
               <div className="flex flex-col sm:flex-row gap-3">
