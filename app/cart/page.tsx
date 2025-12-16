@@ -15,6 +15,8 @@ interface CartItem {
   image: string;
   quantity: number;
   variant?: { name: string; value: string };
+  unitType?: string;
+  isPerUnit?: boolean;
 }
 
 export default function CartPage() {
@@ -120,28 +122,72 @@ export default function CartPage() {
 
                     <div className="flex-grow">
                       <h3 className="font-semibold text-foreground mb-1 text-lg">{item.name}</h3>
-                      {item.variant && <p className="text-sm text-muted-foreground mb-2">{item.variant.name}: {item.variant.value}</p>}
-                      <p className="text-primary font-semibold text-xl">${item.price}</p>
+                      {item.variant && (
+                        <p className="text-sm text-muted-foreground mb-1">
+                          <span className="font-medium">{item.variant.name}:</span> {item.variant.value}
+                        </p>
+                      )}
+                      {item.isPerUnit && item.unitType ? (
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-medium">
+                            Sold by {item.unitType}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            ${item.price.toFixed(2)} per {item.unitType}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-primary font-semibold text-xl">${item.price}</p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-3 my-3 sm:my-0">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="w-9 h-9 rounded-full"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </Button>
-                      <span className="w-10 text-center font-semibold text-lg">{item.quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="w-9 h-9 rounded-full"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
+                      {item.isPerUnit && item.unitType ? (
+                        // For per-unit products, show quantity in units
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => updateQuantity(item.id, Math.max(0.5, item.quantity - 0.5))}
+                            className="w-9 h-9 rounded-full"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </Button>
+                          <div className="min-w-[80px] text-center">
+                            <span className="font-semibold text-lg block">{item.quantity}</span>
+                            <span className="text-xs text-muted-foreground">{item.unitType}(s)</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => updateQuantity(item.id, item.quantity + 0.5)}
+                            className="w-9 h-9 rounded-full"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        // For regular products, standard quantity controls
+                        <>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className="w-9 h-9 rounded-full"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </Button>
+                          <span className="w-10 text-center font-semibold text-lg">{item.quantity}</span>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="w-9 h-9 rounded-full"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
 
                     <div className="text-right flex-shrink-0 w-24">

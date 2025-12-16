@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -122,17 +123,20 @@ export default function AdminOrders() {
                     </div>
                   ))}
                   <div className="flex items-center justify-between pt-3">
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Button>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/admin/orders/${order.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Detail
+                        </Button>
+                      </Link>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleStatusChange(order.id, order.status || "inquiry")}
+                        onClick={() => handleStatusChange(order.id, order.status)}
+                        disabled={order.status === "delivered" || order.status === "cancelled"}
                       >
-                        Change Status
+                        Update Status
                       </Button>
                     </div>
                     <div className="text-right">

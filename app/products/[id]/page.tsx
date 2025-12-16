@@ -24,6 +24,8 @@ interface CartItem {
   image: string
   quantity: number
   variant?: { name: string; value: string }
+  unitType?: string
+  isPerUnit?: boolean
 }
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -69,7 +71,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     const savedCart = localStorage.getItem("monarca-cart")
     if (savedCart) {
       const cartItems: CartItem[] = JSON.parse(savedCart)
-      setCartCount(cartItems.reduce((acc, item) => acc + item.quantity, 0))
+      // Count items: per-unit products count as 1, regular products count by quantity
+      const count = cartItems.reduce((acc, item) => {
+        return acc + (item.isPerUnit ? 1 : item.quantity)
+      }, 0)
+      setCartCount(count)
     }
 
     if (isMobileMenuOpen) {
@@ -138,7 +144,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     }
 
     localStorage.setItem("monarca-cart", JSON.stringify(cartItems))
-    setCartCount(cartItems.reduce((acc, item) => acc + item.quantity, 0))
+    // Count items: per-unit products count as 1, regular products count by quantity
+    const count = cartItems.reduce((acc, item) => acc + (item.isPerUnit ? 1 : item.quantity), 0)
+    setCartCount(count)
     window.dispatchEvent(new CustomEvent("cart-updated"))
 
     const itemDescription = product.pricing_type === "per_unit"

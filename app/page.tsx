@@ -49,16 +49,36 @@ export default function Home() {
 
   useEffect(() => {
     // Load cart from localStorage to set initial cart count
-    const savedCart = localStorage.getItem("monarca-cart")
-    if (savedCart) {
-      const cartItems: CartItem[] = JSON.parse(savedCart)
-      setCartCount(cartItems.reduce((acc, item) => acc + item.quantity, 0))
+    const handleCartUpdate = () => {
+      const savedCart = localStorage.getItem("monarca-cart")
+      if (savedCart) {
+        const cartItems = JSON.parse(savedCart)
+        // Count items: per-unit products count as 1, regular products count by quantity
+        const count = cartItems.reduce((acc: number, item: any) => {
+          return acc + (item.isPerUnit ? 1 : item.quantity)
+        }, 0)
+        setCartCount(count)
+      } else {
+        setCartCount(0)
+      }
     }
+
+    handleCartUpdate() // Initial load
+
+    // Listen for cart updates from other components
+    window.addEventListener("cart-updated", handleCartUpdate)
+    // Listen for changes in localStorage from other tabs/windows
+    window.addEventListener("storage", handleCartUpdate)
 
     if (isMobileMenuOpen) {
       document.body.style.overflow = "hidden"
     } else {
       document.body.style.overflow = ""
+    }
+
+    return () => {
+      window.removeEventListener("cart-updated", handleCartUpdate)
+      window.removeEventListener("storage", handleCartUpdate)
     }
   }, [isMobileMenuOpen])
 

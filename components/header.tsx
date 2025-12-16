@@ -33,7 +33,11 @@ export default function Header() {
       const savedCart = localStorage.getItem("monarca-cart");
       if (savedCart) {
         const cartItems: CartItem[] = JSON.parse(savedCart);
-        setCartCount(cartItems.reduce((sum, item) => sum + item.quantity, 0));
+        // Count items: per-unit products count as 1, regular products count by quantity
+        const count = cartItems.reduce((acc: number, item: any) => {
+          return acc + (item.isPerUnit ? 1 : item.quantity);
+        }, 0);
+        setCartCount(count);
       } else {
         setCartCount(0);
       }
@@ -71,9 +75,8 @@ export default function Header() {
             <Link
               key={link.href}
               href={link.href}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                pathname === link.href ? "text-primary" : "text-foreground"
-              }`}
+              className={`text-sm font-medium transition-colors hover:text-primary ${pathname === link.href ? "text-primary" : "text-foreground"
+                }`}
             >
               {link.label}
             </Link>
@@ -129,11 +132,10 @@ export default function Header() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`text-lg font-medium transition-colors hover:text-primary ${
-                      pathname === link.href
-                        ? "text-primary"
-                        : "text-foreground"
-                    }`}
+                    className={`text-lg font-medium transition-colors hover:text-primary ${pathname === link.href
+                      ? "text-primary"
+                      : "text-foreground"
+                      }`}
                     onClick={() => setIsSheetOpen(false)}
                   >
                     {link.label}
