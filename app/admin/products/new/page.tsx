@@ -17,29 +17,8 @@ import { useToast } from "@/hooks/use-toast"
 import { uploadMultipleImages } from "@/lib/image-upload"
 import Image from "next/image"
 import { CreateCategoryDialog } from "@/components/admin/create-category-dialog"
-import { AdvancedProductVariantsSection } from "@/components/admin/advanced-product-variants-section"
-import { createProductOption, createOptionValue, createProductVariant } from "@/hooks/use-product-variants"
-
-interface NewOption {
-  name: string
-  values: string[]
-}
-
-interface NewVariant {
-  optionValues: { optionName: string; value: string }[]
-  sku: string
-  price: number
-  compareAtPrice: number | null
-  pricingType: 'fixed' | 'per_unit'
-  unitType: string | null
-  pricePerUnit: number | null
-  minQuantity: number
-  maxQuantity: number | null
-  stockQuantity: number
-  trackInventory: boolean
-  isAvailable: boolean
-}
-
+import { DirectVariantsSection, DirectVariant } from "@/components/admin/direct-variants-section"
+import { createProductVariantDirect } from "@/hooks/use-product-variants"
 export default function NewProduct() {
   const [formData, setFormData] = useState({
     name: "",
@@ -64,8 +43,7 @@ export default function NewProduct() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isUploadingImages, setIsUploadingImages] = useState(false)
-  const [productOptions, setProductOptions] = useState<NewOption[]>([])
-  const [productVariants, setProductVariants] = useState<NewVariant[]>([])
+  const [productVariants, setProductVariants] = useState<DirectVariant[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { toast } = useToast()
@@ -187,43 +165,16 @@ export default function NewProduct() {
         created_at: new Date().toISOString(),
       })
 
-      // Create options and variants if any
-      if (productOptions.length > 0 && productVariants.length > 0 && product) {
-        // Create a map to store option value IDs by their name
-        const optionValueMap: Record<string, Record<string, string>> = {}
-
-        // First, create all options and their values
-        for (let i = 0; i < productOptions.length; i++) {
-          const opt = productOptions[i]
-          const createdOption = await createProductOption(product.id, opt.name, i)
-          optionValueMap[opt.name] = {}
-
-          for (let j = 0; j < opt.values.length; j++) {
-            const val = opt.values[j]
-            const createdValue = await createOptionValue(createdOption.id, val, j)
-            optionValueMap[opt.name][val] = createdValue.id
-          }
-        }
-
-        // Then, create all variants with their option value links
+      // Create variants directly if any
+      if (productVariants.length > 0 && product) {
         for (const variant of productVariants) {
-          const optionValueIds = variant.optionValues
-            .map(ov => optionValueMap[ov.optionName]?.[ov.value])
-            .filter(Boolean) as string[]
-
-          await createProductVariant(product.id, {
+          await createProductVariantDirect(product.id, {
             sku: variant.sku,
             price: variant.price,
-            compare_at_price: variant.compareAtPrice,
-            pricing_type: variant.pricingType,
-            unit_type: variant.unitType,
-            price_per_unit: variant.pricePerUnit,
-            min_quantity: variant.minQuantity,
-            max_quantity: variant.maxQuantity,
             stock_quantity: variant.stockQuantity,
-            track_inventory: variant.trackInventory,
             is_available: variant.isAvailable,
-          }, optionValueIds)
+            name: variant.name,
+          })
         }
       }
 
@@ -511,10 +462,8 @@ export default function NewProduct() {
               </CardContent>
             </Card>
 
-            {/* Product Variants (SKUs) */}
-            <AdvancedProductVariantsSection
-              options={productOptions}
-              setOptions={setProductOptions}
+            {/* Product Variants (Direct) */}
+            <DirectVariantsSection
               variants={productVariants}
               setVariants={setProductVariants}
               basePrice={parseFloat(formData.price) || 0}

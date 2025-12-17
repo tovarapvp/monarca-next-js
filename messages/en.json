@@ -1,0 +1,317 @@
+{
+    "common": {
+        "brand": "MONARCA",
+        "cart": "Cart",
+        "openMenu": "Open menu",
+        "closeMenu": "Close menu",
+        "loading": "Loading...",
+        "error": "Error",
+        "success": "Success",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "add": "Add",
+        "search": "Search",
+        "filter": "Filter",
+        "clearFilters": "Clear All Filters",
+        "apply": "Apply",
+        "viewAll": "View All",
+        "readMore": "Read More",
+        "learnMore": "Learn More",
+        "goBack": "Go Back",
+        "goHome": "Go Home",
+        "submit": "Submit",
+        "continue": "Continue",
+        "previous": "Previous",
+        "next": "Next"
+    },
+    "nav": {
+        "home": "Home",
+        "products": "All Products",
+        "about": "About",
+        "necklaces": "Necklaces",
+        "earrings": "Earrings",
+        "bracelets": "Bracelets"
+    },
+    "home": {
+        "hero": {
+            "title": "Transform Your Style",
+            "subtitle": "Discover MONARCA",
+            "cta": "Shop New Arrivals"
+        },
+        "trust": {
+            "warranty": "Lifetime Warranty",
+            "warrantyDesc": "Quality guaranteed",
+            "handcrafted": "Handcrafted",
+            "handcraftedDesc": "By master artisans",
+            "customers": "10K+ Happy Customers",
+            "customersDesc": "Worldwide",
+            "rating": "4.9/5 Rating",
+            "ratingDesc": "From 2,500+ reviews"
+        },
+        "categories": {
+            "title": "Shop by Category"
+        },
+        "arrivals": {
+            "title": "New Arrivals"
+        },
+        "story": {
+            "title": "Crafted with Passion",
+            "description": "Every MONARCA piece tells a story of transformation and elegance. Our master artisans combine traditional techniques with contemporary design to create jewelry that celebrates your unique journey. Like the monarch butterfly's metamorphosis, each piece represents growth, beauty, and the courage to embrace change.",
+            "ethical": "Ethically sourced materials",
+            "artisans": "Handcrafted by master artisans",
+            "guarantee": "Lifetime craftsmanship guarantee",
+            "cta": "Read Our Story"
+        },
+        "testimonials": {
+            "title": "What Our Customers Say"
+        },
+        "instagram": {
+            "title": "@MONARCA on Instagram",
+            "cta": "Follow @MONARCA"
+        }
+    },
+    "footer": {
+        "description": "Transform your style with luxury jewelry crafted with passion and precision.",
+        "rating": "4.9/5 from 2,500+ reviews",
+        "shop": "Shop",
+        "newArrivals": "New Arrivals",
+        "support": "Support",
+        "contactUs": "Contact Us",
+        "sizeGuide": "Size Guide",
+        "careInstructions": "Care Instructions",
+        "returns": "Returns & Exchanges",
+        "connect": "Connect",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
+        "pinterest": "Pinterest",
+        "newsletter": "Newsletter",
+        "rights": "© 2024 MONARCA. All rights reserved.",
+        "privacy": "Privacy Policy",
+        "terms": "Terms of Service"
+    },
+    "products": {
+        "title": "All Products",
+        "showing": "Showing {count} of {total} products",
+        "filterProducts": "Filter Products",
+        "noProducts": "No products match your current filters.",
+        "unableToLoad": "Unable to load products",
+        "tryAgain": "Please try again later.",
+        "price": "Price",
+        "category": "Category",
+        "addToCart": "Add to Cart",
+        "outOfStock": "Out of Stock",
+        "inStock": "In Stock",
+        "reviews": "reviews"
+    },
+    "product": {
+        "addToCart": "Add to Cart",
+        "addedToCart": "Added to cart!",
+        "buyNow": "Buy Now",
+        "description": "Description",
+        "details": "Details",
+        "shipping": "Shipping",
+        "selectVariant": "Select {name}",
+        "quantity": "Quantity",
+        "stock": "{count} in stock",
+        "perUnit": "per {unit}"
+    },
+    "cart": {
+        "title": "Shopping Cart",
+        "empty": "Your cart is empty",
+        "emptyDescription": "Looks like you haven't added any items to your cart yet.",
+        "startShopping": "Start Shopping",
+        "continueShopping": "Continue Shopping",
+        "subtotal": "Subtotal",
+        "shipping": "Shipping",
+        "tax": "Tax",
+        "total": "Total",
+        "checkout": "Proceed to Checkout",
+        "remove": "Remove",
+        "updateQuantity": "Update quantity",
+        "itemAdded": "Item added to cart",
+        "itemRemoved": "Item removed from cart",
+        "whatsappCheckout": "Checkout via WhatsApp",
+        "emailCheckout": "Checkout via Email",
+        "orderSummary": "Order Summary",
+        "shippingCalculated": "Calculated at checkout",
+        "secureCheckout": "Secure Checkout",
+        "secureDescription": "Your payment information is encrypted and secure."
+    },
+    "checkout": {
+        "title": "Checkout",
+        "shippingInfo": "Shipping Information",
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "email": "Email",
+        "phone": "Phone",
+        "address": "Address",
+        "city": "City",
+        "state": "State/Province",
+        "zipCode": "ZIP/Postal Code",
+        "country": "Country",
+        "paymentMethod": "Payment Method",
+        "creditCard": "Credit Card",
+        "paypal": "PayPal",
+        "placeOrder": "Place Order",
+        "processing": "Processing...",
+        "orderConfirmation": "Order Confirmation",
+        "thankYou": "Thank you for your order!",
+        "orderNumber": "Order Number",
+        "confirmationEmail": "A confirmation email has been sent to your email address.",
+        "backToHome": "Back to Home",
+        "inquireViaWhatsApp": "Inquire via WhatsApp",
+        "orderSummary": "Order Summary",
+        "emptyCart": "Your cart is empty",
+        "addItems": "Add some items to your cart to proceed with checkout."
+    },
+    "about": {
+        "hero": {
+            "title": "Our Story",
+            "subtitle": "Nuestra Historia"
+        },
+        "mission": "At MONARCA, we believe every woman holds a unique beauty, ready to transform and shine. Inspired by the incredible journey of the Monarch butterfly, we create pieces that not only adorn but also symbolize strength, femininity, and elegance.",
+        "inspiration": {
+            "title": "The Inspiration",
+            "p1": "The name MONARCA was born from a moment of pure inspiration. Like the Monarch butterfly's incredible transformation from caterpillar to one of nature's most beautiful creatures, we believe every woman has the power to transform and reveal her inner radiance.",
+            "p2": "Our founder discovered this connection during a trip to Mexico, where millions of Monarch butterflies complete their miraculous migration. Witnessing their strength, beauty, and resilience sparked the vision for jewelry that would embody these same qualities.",
+            "p3": "Each piece in our collection is crafted to celebrate the unique journey of transformation that every woman experiences throughout her life. From delicate everyday pieces to statement jewelry for special moments, MONARCA accompanies you through every chapter of your story."
+        },
+        "process": {
+            "title": "Our Process",
+            "design": "Design",
+            "designDesc": "Every piece begins with careful sketching and planning",
+            "materials": "Materials",
+            "materialsDesc": "Only the finest gold and precious stones are selected",
+            "crafting": "Crafting",
+            "craftingDesc": "Expert artisans bring each design to life by hand",
+            "quality": "Quality",
+            "qualityDesc": "Each piece undergoes rigorous quality inspection"
+        },
+        "cta": {
+            "title": "Ready to Begin Your Transformation?",
+            "description": "Discover our collection of handcrafted jewelry designed to celebrate your unique journey.",
+            "button": "Discover the Collection"
+        }
+    },
+    "error": {
+        "title": "Something went wrong!",
+        "description": "An unexpected error occurred.",
+        "tryAgain": "Try Again",
+        "backHome": "Back to Home"
+    },
+    "notFound": {
+        "title": "Page Not Found",
+        "description": "The page you're looking for doesn't exist or has been moved.",
+        "goHome": "Go Home",
+        "goBack": "Go Back"
+    },
+    "admin": {
+        "dashboard": {
+            "title": "Dashboard",
+            "welcome": "Welcome to MONARCA admin panel",
+            "totalProducts": "Total Products",
+            "inCatalog": "In your catalog",
+            "pendingOrders": "Pending Orders",
+            "awaiting": "Awaiting processing",
+            "monthlySales": "Monthly Sales",
+            "last30Days": "Last 30 days",
+            "activeCustomers": "Active Customers",
+            "uniqueCustomers": "Unique customers",
+            "quickActions": "Quick Actions",
+            "manageStore": "Manage your store efficiently",
+            "addNewProduct": "Add New Product",
+            "viewPendingOrders": "View Pending Orders",
+            "editProducts": "Edit Existing Products",
+            "activitySummary": "Activity Summary",
+            "latestActivities": "Latest activities in your store",
+            "connectedSupabase": "Dashboard connected to Supabase",
+            "realTimeEnabled": "Real-time data enabled",
+            "productsInCatalog": "{count} products in catalog",
+            "viewInProducts": "View in Products page",
+            "pendingOrdersCount": "{count} pending orders",
+            "viewInOrders": "View in Orders page"
+        },
+        "products": {
+            "title": "Products",
+            "addProduct": "Add Product",
+            "editProduct": "Edit Product",
+            "productName": "Product Name",
+            "price": "Price",
+            "stock": "Stock",
+            "category": "Category",
+            "status": "Status",
+            "actions": "Actions",
+            "active": "Active",
+            "inactive": "Inactive",
+            "featured": "Featured",
+            "description": "Description",
+            "images": "Images",
+            "variants": "Variants",
+            "saveProduct": "Save Product"
+        },
+        "orders": {
+            "title": "Orders",
+            "order": "Order",
+            "orderId": "Order ID",
+            "customer": "Customer",
+            "date": "Date",
+            "status": "Status",
+            "total": "Total",
+            "quantity": "Quantity",
+            "actions": "Actions",
+            "viewOrder": "View Order",
+            "viewDetails": "View Details",
+            "updateStatus": "Update Status",
+            "createOrder": "Create Order",
+            "noOrders": "No orders yet",
+            "pending": "Pending",
+            "processing": "Processing",
+            "shipped": "Shipped",
+            "delivered": "Delivered",
+            "cancelled": "Cancelled"
+        },
+        "categories": {
+            "title": "Categories",
+            "addCategory": "Add Category",
+            "editCategory": "Edit Category",
+            "categoryName": "Category Name",
+            "slug": "Slug",
+            "image": "Image",
+            "products": "Products"
+        },
+        "settings": {
+            "title": "Settings",
+            "general": "General",
+            "payment": "Payment",
+            "shipping": "Shipping",
+            "notifications": "Notifications",
+            "siteName": "Site Name",
+            "currency": "Currency",
+            "contactInfo": "Contact Information",
+            "contactEmail": "Contact Email",
+            "contactPhone": "Phone / WhatsApp",
+            "taxRate": "Tax Rate",
+            "shippingSettings": "Shipping Settings",
+            "freeShippingThreshold": "Free Shipping Threshold",
+            "paymentSettings": "Payment Settings",
+            "paymentProvider": "Payment Provider",
+            "enableCheckout": "Enable Online Checkout",
+            "stripeConfig": "Stripe Configuration",
+            "whatsappNumber": "WhatsApp Number"
+        },
+        "login": {
+            "title": "Admin Login",
+            "email": "Email",
+            "password": "Password",
+            "login": "Login",
+            "forgotPassword": "Forgot Password?"
+        }
+    },
+    "language": {
+        "english": "English",
+        "spanish": "Español",
+        "selectLanguage": "Select Language"
+    }
+}

@@ -1,0 +1,317 @@
+{
+    "common": {
+        "brand": "MONARCA",
+        "cart": "Carrito",
+        "openMenu": "Abrir menú",
+        "closeMenu": "Cerrar menú",
+        "loading": "Cargando...",
+        "error": "Error",
+        "success": "Éxito",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "delete": "Eliminar",
+        "edit": "Editar",
+        "add": "Agregar",
+        "search": "Buscar",
+        "filter": "Filtrar",
+        "clearFilters": "Limpiar Filtros",
+        "apply": "Aplicar",
+        "viewAll": "Ver Todo",
+        "readMore": "Leer Más",
+        "learnMore": "Más Información",
+        "goBack": "Volver",
+        "goHome": "Ir al Inicio",
+        "submit": "Enviar",
+        "continue": "Continuar",
+        "previous": "Anterior",
+        "next": "Siguiente"
+    },
+    "nav": {
+        "home": "Inicio",
+        "products": "Todos los Productos",
+        "about": "Nosotros",
+        "necklaces": "Collares",
+        "earrings": "Aretes",
+        "bracelets": "Pulseras"
+    },
+    "home": {
+        "hero": {
+            "title": "Transforma Tu Estilo",
+            "subtitle": "Descubre MONARCA",
+            "cta": "Ver Novedades"
+        },
+        "trust": {
+            "warranty": "Garantía de por Vida",
+            "warrantyDesc": "Calidad garantizada",
+            "handcrafted": "Hecho a Mano",
+            "handcraftedDesc": "Por artesanos expertos",
+            "customers": "10K+ Clientes Felices",
+            "customersDesc": "En todo el mundo",
+            "rating": "4.9/5 Calificación",
+            "ratingDesc": "De más de 2,500 reseñas"
+        },
+        "categories": {
+            "title": "Comprar por Categoría"
+        },
+        "arrivals": {
+            "title": "Novedades"
+        },
+        "story": {
+            "title": "Elaborado con Pasión",
+            "description": "Cada pieza de MONARCA cuenta una historia de transformación y elegancia. Nuestros artesanos expertos combinan técnicas tradicionales con diseño contemporáneo para crear joyas que celebran tu viaje único. Como la metamorfosis de la mariposa monarca, cada pieza representa crecimiento, belleza y el coraje de abrazar el cambio.",
+            "ethical": "Materiales de origen ético",
+            "artisans": "Hecho a mano por artesanos expertos",
+            "guarantee": "Garantía de artesanía de por vida",
+            "cta": "Lee Nuestra Historia"
+        },
+        "testimonials": {
+            "title": "Lo Que Dicen Nuestros Clientes"
+        },
+        "instagram": {
+            "title": "@MONARCA en Instagram",
+            "cta": "Seguir @MONARCA"
+        }
+    },
+    "footer": {
+        "description": "Transforma tu estilo con joyas de lujo elaboradas con pasión y precisión.",
+        "rating": "4.9/5 de más de 2,500 reseñas",
+        "shop": "Tienda",
+        "newArrivals": "Novedades",
+        "support": "Soporte",
+        "contactUs": "Contáctanos",
+        "sizeGuide": "Guía de Tallas",
+        "careInstructions": "Instrucciones de Cuidado",
+        "returns": "Devoluciones y Cambios",
+        "connect": "Conectar",
+        "instagram": "Instagram",
+        "facebook": "Facebook",
+        "pinterest": "Pinterest",
+        "newsletter": "Boletín",
+        "rights": "© 2024 MONARCA. Todos los derechos reservados.",
+        "privacy": "Política de Privacidad",
+        "terms": "Términos de Servicio"
+    },
+    "products": {
+        "title": "Todos los Productos",
+        "showing": "Mostrando {count} de {total} productos",
+        "filterProducts": "Filtrar Productos",
+        "noProducts": "No hay productos que coincidan con los filtros actuales.",
+        "unableToLoad": "No se pueden cargar los productos",
+        "tryAgain": "Por favor, inténtalo de nuevo más tarde.",
+        "price": "Precio",
+        "category": "Categoría",
+        "addToCart": "Agregar al Carrito",
+        "outOfStock": "Agotado",
+        "inStock": "En Stock",
+        "reviews": "reseñas"
+    },
+    "product": {
+        "addToCart": "Agregar al Carrito",
+        "addedToCart": "¡Agregado al carrito!",
+        "buyNow": "Comprar Ahora",
+        "description": "Descripción",
+        "details": "Detalles",
+        "shipping": "Envío",
+        "selectVariant": "Seleccionar {name}",
+        "quantity": "Cantidad",
+        "stock": "{count} en stock",
+        "perUnit": "por {unit}"
+    },
+    "cart": {
+        "title": "Carrito de Compras",
+        "empty": "Tu carrito está vacío",
+        "emptyDescription": "Parece que aún no has agregado ningún artículo a tu carrito.",
+        "startShopping": "Comenzar a Comprar",
+        "continueShopping": "Seguir Comprando",
+        "subtotal": "Subtotal",
+        "shipping": "Envío",
+        "tax": "Impuesto",
+        "total": "Total",
+        "checkout": "Proceder al Pago",
+        "remove": "Eliminar",
+        "updateQuantity": "Actualizar cantidad",
+        "itemAdded": "Artículo agregado al carrito",
+        "itemRemoved": "Artículo eliminado del carrito",
+        "whatsappCheckout": "Pagar por WhatsApp",
+        "emailCheckout": "Pagar por Email",
+        "orderSummary": "Resumen del Pedido",
+        "shippingCalculated": "Calculado en el pago",
+        "secureCheckout": "Pago Seguro",
+        "secureDescription": "Tu información de pago está encriptada y segura."
+    },
+    "checkout": {
+        "title": "Pago",
+        "shippingInfo": "Información de Envío",
+        "firstName": "Nombre",
+        "lastName": "Apellido",
+        "email": "Correo Electrónico",
+        "phone": "Teléfono",
+        "address": "Dirección",
+        "city": "Ciudad",
+        "state": "Estado/Provincia",
+        "zipCode": "Código Postal",
+        "country": "País",
+        "paymentMethod": "Método de Pago",
+        "creditCard": "Tarjeta de Crédito",
+        "paypal": "PayPal",
+        "placeOrder": "Realizar Pedido",
+        "processing": "Procesando...",
+        "orderConfirmation": "Confirmación de Pedido",
+        "thankYou": "¡Gracias por tu pedido!",
+        "orderNumber": "Número de Pedido",
+        "confirmationEmail": "Se ha enviado un correo de confirmación a tu dirección de email.",
+        "backToHome": "Volver al Inicio",
+        "inquireViaWhatsApp": "Consultar por WhatsApp",
+        "orderSummary": "Resumen del Pedido",
+        "emptyCart": "Tu carrito está vacío",
+        "addItems": "Agrega algunos artículos a tu carrito para proceder con el pago."
+    },
+    "about": {
+        "hero": {
+            "title": "Nuestra Historia",
+            "subtitle": "Our Story"
+        },
+        "mission": "En MONARCA, creemos que cada mujer tiene una belleza única, lista para transformarse y brillar. Inspirados por el increíble viaje de la mariposa Monarca, creamos piezas que no solo adornan sino que también simbolizan fuerza, feminidad y elegancia.",
+        "inspiration": {
+            "title": "La Inspiración",
+            "p1": "El nombre MONARCA nació de un momento de pura inspiración. Como la increíble transformación de la mariposa Monarca de oruga a una de las criaturas más hermosas de la naturaleza, creemos que cada mujer tiene el poder de transformarse y revelar su resplandor interior.",
+            "p2": "Nuestra fundadora descubrió esta conexión durante un viaje a México, donde millones de mariposas Monarca completan su milagrosa migración. Presenciar su fuerza, belleza y resiliencia encendió la visión de joyas que encarnarían estas mismas cualidades.",
+            "p3": "Cada pieza de nuestra colección está diseñada para celebrar el viaje único de transformación que cada mujer experimenta a lo largo de su vida. Desde piezas delicadas para el día a día hasta joyas llamativas para momentos especiales, MONARCA te acompaña en cada capítulo de tu historia."
+        },
+        "process": {
+            "title": "Nuestro Proceso",
+            "design": "Diseño",
+            "designDesc": "Cada pieza comienza con un cuidadoso boceto y planificación",
+            "materials": "Materiales",
+            "materialsDesc": "Solo se seleccionan el oro más fino y las piedras preciosas",
+            "crafting": "Elaboración",
+            "craftingDesc": "Artesanos expertos dan vida a cada diseño a mano",
+            "quality": "Calidad",
+            "qualityDesc": "Cada pieza pasa por una rigurosa inspección de calidad"
+        },
+        "cta": {
+            "title": "¿Lista para Comenzar tu Transformación?",
+            "description": "Descubre nuestra colección de joyas hechas a mano diseñadas para celebrar tu viaje único.",
+            "button": "Descubrir la Colección"
+        }
+    },
+    "error": {
+        "title": "¡Algo salió mal!",
+        "description": "Ocurrió un error inesperado.",
+        "tryAgain": "Intentar de Nuevo",
+        "backHome": "Volver al Inicio"
+    },
+    "notFound": {
+        "title": "Página No Encontrada",
+        "description": "La página que buscas no existe o ha sido movida.",
+        "goHome": "Ir al Inicio",
+        "goBack": "Volver"
+    },
+    "admin": {
+        "dashboard": {
+            "title": "Panel de Control",
+            "welcome": "Bienvenido al panel de administración de MONARCA",
+            "totalProducts": "Total de Productos",
+            "inCatalog": "En tu catálogo",
+            "pendingOrders": "Pedidos Pendientes",
+            "awaiting": "Esperando procesamiento",
+            "monthlySales": "Ventas Mensuales",
+            "last30Days": "Últimos 30 días",
+            "activeCustomers": "Clientes Activos",
+            "uniqueCustomers": "Clientes únicos",
+            "quickActions": "Acciones Rápidas",
+            "manageStore": "Administra tu tienda eficientemente",
+            "addNewProduct": "Agregar Nuevo Producto",
+            "viewPendingOrders": "Ver Pedidos Pendientes",
+            "editProducts": "Editar Productos Existentes",
+            "activitySummary": "Resumen de Actividad",
+            "latestActivities": "Últimas actividades en tu tienda",
+            "connectedSupabase": "Panel conectado a Supabase",
+            "realTimeEnabled": "Datos en tiempo real habilitados",
+            "productsInCatalog": "{count} productos en el catálogo",
+            "viewInProducts": "Ver en página de Productos",
+            "pendingOrdersCount": "{count} pedidos pendientes",
+            "viewInOrders": "Ver en página de Pedidos"
+        },
+        "products": {
+            "title": "Productos",
+            "addProduct": "Agregar Producto",
+            "editProduct": "Editar Producto",
+            "productName": "Nombre del Producto",
+            "price": "Precio",
+            "stock": "Stock",
+            "category": "Categoría",
+            "status": "Estado",
+            "actions": "Acciones",
+            "active": "Activo",
+            "inactive": "Inactivo",
+            "featured": "Destacado",
+            "description": "Descripción",
+            "images": "Imágenes",
+            "variants": "Variantes",
+            "saveProduct": "Guardar Producto"
+        },
+        "orders": {
+            "title": "Pedidos",
+            "order": "Pedido",
+            "orderId": "ID de Pedido",
+            "customer": "Cliente",
+            "date": "Fecha",
+            "status": "Estado",
+            "total": "Total",
+            "quantity": "Cantidad",
+            "actions": "Acciones",
+            "viewOrder": "Ver Pedido",
+            "viewDetails": "Ver Detalles",
+            "updateStatus": "Actualizar Estado",
+            "createOrder": "Crear Pedido",
+            "noOrders": "No hay pedidos aún",
+            "pending": "Pendiente",
+            "processing": "Procesando",
+            "shipped": "Enviado",
+            "delivered": "Entregado",
+            "cancelled": "Cancelado"
+        },
+        "categories": {
+            "title": "Categorías",
+            "addCategory": "Agregar Categoría",
+            "editCategory": "Editar Categoría",
+            "categoryName": "Nombre de Categoría",
+            "slug": "Slug",
+            "image": "Imagen",
+            "products": "Productos"
+        },
+        "settings": {
+            "title": "Configuración",
+            "general": "General",
+            "payment": "Pago",
+            "shipping": "Envío",
+            "notifications": "Notificaciones",
+            "siteName": "Nombre del Sitio",
+            "currency": "Moneda",
+            "contactInfo": "Información de Contacto",
+            "contactEmail": "Email de Contacto",
+            "contactPhone": "Teléfono / WhatsApp",
+            "taxRate": "Tasa de Impuesto",
+            "shippingSettings": "Configuración de Envío",
+            "freeShippingThreshold": "Umbral de Envío Gratis",
+            "paymentSettings": "Configuración de Pago",
+            "paymentProvider": "Proveedor de Pago",
+            "enableCheckout": "Habilitar Pago en Línea",
+            "stripeConfig": "Configuración de Stripe",
+            "whatsappNumber": "Número de WhatsApp"
+        },
+        "login": {
+            "title": "Acceso de Administrador",
+            "email": "Correo Electrónico",
+            "password": "Contraseña",
+            "login": "Iniciar Sesión",
+            "forgotPassword": "¿Olvidaste tu Contraseña?"
+        }
+    },
+    "language": {
+        "english": "English",
+        "spanish": "Español",
+        "selectLanguage": "Seleccionar Idioma"
+    }
+}

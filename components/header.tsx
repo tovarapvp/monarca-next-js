@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, ShoppingCart, X } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 interface CartItem {
   id: string;
@@ -17,16 +18,17 @@ interface CartItem {
   variant?: string;
 }
 
-const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/products", label: "All Products" },
-  { href: "/about", label: "About" },
-];
-
 export default function Header() {
+  const t = useTranslations();
   const [cartCount, setCartCount] = useState(0);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const pathname = usePathname();
+
+  const navLinks = [
+    { href: "/", label: t('nav.home') },
+    { href: "/products", label: t('nav.products') },
+    { href: "/about", label: t('nav.about') },
+  ];
 
   useEffect(() => {
     const updateCartCount = () => {
@@ -83,11 +85,13 @@ export default function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-4 ">
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+
           <Button asChild variant="ghost" size="icon" className="relative">
             <Link href="/cart">
               <ShoppingCart className="h-5 w-5" />
-              <span className="sr-only">Cart</span>
+              <span className="sr-only">{t('common.cart')}</span>
               {cartCount > 0 && (
                 <span className="absolute -top-0 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
                   {cartCount}
@@ -100,7 +104,7 @@ export default function Header() {
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
                 <Menu className="h-5 w-5" />
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">{t('common.openMenu')}</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="left">
@@ -124,7 +128,7 @@ export default function Header() {
                   onClick={() => setIsSheetOpen(false)}
                 >
                   <X className="h-5 w-5" />
-                  <span className="sr-only">Close menu</span>
+                  <span className="sr-only">{t('common.closeMenu')}</span>
                 </Button>
               </div>
               <nav className="flex flex-col gap-6">
@@ -142,6 +146,9 @@ export default function Header() {
                   </Link>
                 ))}
               </nav>
+              <div className="mt-6">
+                <LanguageSwitcher />
+              </div>
             </SheetContent>
           </Sheet>
         </div>

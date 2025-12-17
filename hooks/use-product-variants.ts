@@ -266,6 +266,85 @@ export async function createProductVariant(
     return variantData
 }
 
+// Create a product variant directly (without option values - for simple variant lists)
+export async function createProductVariantDirect(
+    productId: string,
+    variant: {
+        sku?: string
+        name?: string  // Display name for the variant
+        price: number
+        stock_quantity?: number
+        is_available?: boolean
+    }
+): Promise<ProductVariant> {
+    const { data: variantData, error: variantError } = await supabase
+        .from('product_variants')
+        .insert({
+            product_id: productId,
+            sku: variant.sku || null,
+            price: variant.price || 0,
+            pricing_type: 'fixed',
+            stock_quantity: variant.stock_quantity || 0,
+            track_inventory: true,
+            allow_backorder: false,
+            is_available: variant.is_available ?? true,
+        })
+        .select()
+        .single()
+
+    if (variantError) throw variantError
+
+    // If name is provided, create a simple option and value for display purposes
+    if (variant.name) {
+        // Check if "Variant" option already exists for this product
+        let optionId: string
+
+        const { data: existingOption } = await supabase
+            .from('product_options')
+            .select('id')
+            .eq('product_id', productId)
+            .eq('name', 'Variant')
+            .single()
+
+        if (existingOption) {
+            optionId = existingOption.id
+        } else {
+            const { data: newOption, error: optionError } = await supabase
+                .from('product_options')
+                .insert({ product_id: productId, name: 'Variant', position: 0 })
+                .select()
+                .single()
+
+            if (optionError) throw optionError
+            optionId = newOption.id
+        }
+
+        // Create option value for this variant name
+        const { data: optionValue, error: valueError } = await supabase
+            .from('product_option_values')
+            .insert({ option_id: optionId, value: variant.name, position: 0 })
+            .select()
+            .single()
+
+        if (valueError) throw valueError
+
+        // Link variant to option value
+        const { error: linkError } = await supabase
+            .from('variant_option_values')
+            .insert({ variant_id: variantData.id, option_value_id: optionValue.id })
+
+        if (linkError) throw linkError
+    }
+
+    // Update product has_variants flag
+    await supabase
+        .from('products')
+        .update({ has_variants: true })
+        .eq('id', productId)
+
+    return variantData
+}
+
 // Update a product variant
 export async function updateProductVariant(
     variantId: string,
