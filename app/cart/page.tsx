@@ -137,16 +137,30 @@ export default function CartPage() {
                         </p>
                       )}
                       {item.isPerUnit && item.unitType ? (
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-medium">
-                            Sold by {item.unitType}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            ${item.price.toFixed(2)} per {item.unitType}
-                          </span>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-medium">
+                              Sold by {item.unitType}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm text-muted-foreground">
+                              ${item.price.toFixed(2)} per {item.unitType}
+                            </span>
+                            <span className="text-sm font-medium text-foreground">
+                              ${item.price.toFixed(2)} × {item.quantity} {item.unitType}{item.quantity !== 1 ? 's' : ''} = ${(item.price * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
                         </div>
                       ) : (
-                        <p className="text-primary font-semibold text-xl">${item.price}</p>
+                        <div className="space-y-1">
+                          <p className="text-primary font-semibold text-xl">${item.price.toFixed(2)}</p>
+                          {item.quantity > 1 && (
+                            <p className="text-sm text-muted-foreground">
+                              ${item.price.toFixed(2)} × {item.quantity} = ${(item.price * item.quantity).toFixed(2)}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
 

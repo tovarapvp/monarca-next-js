@@ -43,6 +43,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [quantity, setQuantity] = useState(1)
 
   // Fetch options and variants for this product (new SKU system)
+  // IMPORTANT: These hooks must ALWAYS be called, even if product is null
+  // to comply with React's Rules of Hooks
   const { options, loading: optionsLoading } = useProductOptions(product?.id || null)
   const { variants, loading: variantsLoading } = useProductVariants(product?.id || null)
 
@@ -92,33 +94,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     }
   }, [isMobileMenuOpen])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Loader2 className="h-12 w-12 animate-spin text-gray-400" />
-      </div>
-    )
-  }
-
-  if (error || !product) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center space-y-4 max-w-md">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {error ? error.message : "Product not found"}
-            </AlertDescription>
-          </Alert>
-          <Link href="/products">
-            <Button>Back to Products</Button>
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
   // Handle variant selection callback from VariantSelector
+  // MUST be before early returns to maintain consistent hook order
   const handleVariantSelect = useCallback((variant: ProductVariant | null, opts: Record<string, string>) => {
     setSelectedVariant(variant)
     setSelectedOptions(opts)
@@ -129,6 +106,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   // Get display price based on selected variant or product base price
   const getDisplayPrice = (): number => {
+    if (!product) return 0
+
     if (hasSkuVariants && selectedVariant) {
       if (selectedVariant.pricing_type === 'per_unit' && selectedVariant.price_per_unit) {
         return selectedVariant.price_per_unit * quantity
@@ -173,6 +152,33 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       return { text: `Only ${selectedVariant.stock_quantity} left!`, available: true }
     }
     return { text: "In Stock", available: true }
+  }
+
+  // Early returns AFTER all hooks and callbacks
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Loader2 className="h-12 w-12 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  if (error || !product) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-md">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error ? error.message : "Product not found"}
+            </AlertDescription>
+          </Alert>
+          <Link href="/products">
+            <Button>Back to Products</Button>
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   const handleAddToCart = () => {
@@ -354,20 +360,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Product Variants Selector */}
-            {hasSkuVariants && (
-              <div className="space-y-4">
-                <VariantSelector
-                  options={options}
-                  variants={variants}
-                  onVariantSelect={handleVariantSelect}
-                />
+            {/* ALWAYS render to maintain consistent hook count */}
+            <VariantSelector
+              options={options}
+              variants={variants}
+              onVariantSelect={handleVariantSelect}
+            />
 
-                {/* Stock Status */}
-                {getStockStatus() && (
-                  <div className={`text-sm font-medium ${getStockStatus()?.available ? 'text-green-600' : 'text-red-600'}`}>
-                    {getStockStatus()?.text}
-                  </div>
-                )}
+            {/* Stock Status - only show when variant is selected */}
+            {hasSkuVariants && selectedVariant && getStockStatus() && (
+              <div className={`text-sm font-medium ${getStockStatus()?.available ? 'text-green-600' : 'text-red-600'}`}>
+                {getStockStatus()?.text}
               </div>
             )}
 
