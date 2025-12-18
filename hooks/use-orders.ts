@@ -125,6 +125,8 @@ export interface NewOrderData {
         phone?: string
     }
     notes?: string
+    payment_method?: 'stripe' | 'paypal' | 'manual'
+    inventory_reduced?: boolean
 }
 
 export interface NewOrderItem {
@@ -143,6 +145,9 @@ export async function createOrder(orderData: NewOrderData): Promise<Order> {
             status: orderData.status || 'pending',
             total: orderData.total,
             shipping_address: orderData.shipping_address,
+            payment_method: orderData.payment_method || 'manual',
+            inventory_reduced: orderData.inventory_reduced || false,
+            notes: orderData.notes || null
         })
         .select()
         .single()

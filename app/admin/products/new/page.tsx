@@ -17,8 +17,37 @@ import { useToast } from "@/hooks/use-toast"
 import { uploadMultipleImages } from "@/lib/image-upload"
 import Image from "next/image"
 import { CreateCategoryDialog } from "@/components/admin/create-category-dialog"
-import { DirectVariantsSection, DirectVariant } from "@/components/admin/direct-variants-section"
-import { createProductVariantDirect } from "@/hooks/use-product-variants"
+import { SimpleVariantTable } from "@/components/admin/simple-variant-table"
+import { AdvancedProductVariantsSection } from "@/components/admin/advanced-product-variants-section"
+import { createProductOption, createOptionValue, createProductVariant } from "@/hooks/use-product-variants"
+
+interface SimpleVariant {
+  sku: string
+  description: string
+  price: number
+  useBasePrice: boolean
+  stock: number
+}
+
+interface NewOption {
+  name: string
+  values: string[]
+}
+
+interface NewVariant {
+  optionValues: { optionName: string; value: string }[]
+  sku: string
+  price: number
+  compareAtPrice: number | null
+  pricingType: 'fixed' | 'per_unit'
+  unitType: string | null
+  pricePerUnit: number | null
+  minQuantity: number
+  maxQuantity: number | null
+  stockQuantity: number
+  trackInventory: boolean
+  isAvailable: boolean
+}
 export default function NewProduct() {
   const [formData, setFormData] = useState({
     name: "",
@@ -43,7 +72,10 @@ export default function NewProduct() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isUploadingImages, setIsUploadingImages] = useState(false)
-  const [productVariants, setProductVariants] = useState<DirectVariant[]>([])
+  const [simpleVariants, setSimpleVariants] = useState<SimpleVariant[]>([])
+  const [productOptions, setProductOptions] = useState<NewOption[]>([])
+  const [productVariants, setProductVariants] = useState<NewVariant[]>([])
+  const [variantMode, setVariantMode] = useState<'simple' | 'advanced'>('simple')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { toast } = useToast()
@@ -161,20 +193,80 @@ export default function NewProduct() {
           : null,
         min_quantity: formData.min_quantity ? parseFloat(formData.min_quantity) : 1,
         max_quantity: formData.max_quantity ? parseFloat(formData.max_quantity) : null,
-        has_variants: productVariants.length > 0,
         created_at: new Date().toISOString(),
       })
 
-      // Create variants directly if any
-      if (productVariants.length > 0 && product) {
+      // Create variants based on mode
+      if (variantMode === 'simple' && simpleVariants.length > 0 && product) {
+        // Simple mode: Create a single option called "Variante"
+        const variantOption = await createProductOption(product.id, "Variante", 0)
+
+        // Create option values and variants
+        for (const simpleVariant of simpleVariants) {
+          // Create variant display name (SKU + Description)
+          const variantName = `${simpleVariant.sku} ${simpleVariant.description}`.trim()
+
+          // Create option value
+          const optionValue = await createOptionValue(variantOption.id, variantName, simpleVariants.indexOf(simpleVariant))
+
+          // Create variant with the simple variant data
+          await createProductVariant(product.id, {
+            sku: simpleVariant.sku,
+            price: simpleVariant.useBasePrice ? parseFloat(formData.price) || 0 : simpleVariant.price,
+            compare_at_price: null,
+            pricing_type: 'fixed',
+            unit_type: null,
+            price_per_unit: null,
+            min_quantity: 1,
+            max_quantity: null,
+            stock_quantity: simpleVariant.stock,
+            track_inventory: true,
+            is_available: simpleVariant.stock > 0,
+          }, [optionValue.id])
+        }
+      } else if (variantMode === 'advanced' && productOptions.length > 0 && productVariants.length > 0 && product) {
+        // Advanced mode: Create options and variants
+        const optionMap = new Map<string, { optionId: string; valueIds: Map<string, string> }>()
+
+        for (const option of productOptions) {
+          const createdOption = await createProductOption(product.id, option.name, productOptions.indexOf(option))
+
+          const valueIds = new Map<string, string>()
+          for (const value of option.values) {
+            const createdValue = await createOptionValue(createdOption.id, value, option.values.indexOf(value))
+            valueIds.set(value, createdValue.id)
+          }
+
+          optionMap.set(option.name, { optionId: createdOption.id, valueIds })
+        }
+
+        // Create variants
         for (const variant of productVariants) {
-          await createProductVariantDirect(product.id, {
+          const optionValueIds: string[] = []
+
+          for (const optVal of variant.optionValues) {
+            const optionData = optionMap.get(optVal.optionName)
+            if (optionData) {
+              const valueId = optionData.valueIds.get(optVal.value)
+              if (valueId) {
+                optionValueIds.push(valueId)
+              }
+            }
+          }
+
+          await createProductVariant(product.id, {
             sku: variant.sku,
             price: variant.price,
+            compare_at_price: variant.compareAtPrice,
+            pricing_type: variant.pricingType,
+            unit_type: variant.unitType,
+            price_per_unit: variant.pricePerUnit,
+            min_quantity: variant.minQuantity,
+            max_quantity: variant.maxQuantity,
             stock_quantity: variant.stockQuantity,
+            track_inventory: variant.trackInventory,
             is_available: variant.isAvailable,
-            name: variant.name,
-          })
+          }, optionValueIds)
         }
       }
 
@@ -462,13 +554,54 @@ export default function NewProduct() {
               </CardContent>
             </Card>
 
-            {/* Product Variants (Direct) */}
-            <DirectVariantsSection
-              variants={productVariants}
-              setVariants={setProductVariants}
-              basePrice={parseFloat(formData.price) || 0}
-              disabled={isLoading}
-            />
+            {/* Product Variants */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Variantes del Producto</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground">Modo:</Label>
+                    <Button
+                      type="button"
+                      variant={variantMode === 'simple' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setVariantMode('simple')}
+                      disabled={isLoading}
+                    >
+                      Simple
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={variantMode === 'advanced' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setVariantMode('advanced')}
+                      disabled={isLoading}
+                    >
+                      Avanzado
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {variantMode === 'simple' ? (
+                  <SimpleVariantTable
+                    variants={simpleVariants}
+                    setVariants={setSimpleVariants}
+                    basePrice={parseFloat(formData.price) || 0}
+                    disabled={isLoading}
+                  />
+                ) : (
+                  <AdvancedProductVariantsSection
+                    options={productOptions}
+                    setOptions={setProductOptions}
+                    variants={productVariants}
+                    setVariants={setProductVariants}
+                    basePrice={parseFloat(formData.price) || 0}
+                    disabled={isLoading}
+                  />
+                )}
+              </CardContent>
+            </Card>
 
             {/* Additional Information */}
             <Card>

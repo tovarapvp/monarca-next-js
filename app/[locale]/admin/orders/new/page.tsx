@@ -9,15 +9,20 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ArrowLeft, Plus, Trash2, Loader2, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { createOrderWithItems, NewOrderItem } from "@/hooks/use-orders"
 import { useProducts } from "@/hooks/use-products"
+import { useProductVariants } from "@/hooks/use-product-variants"
+import { supabase } from "@/lib/supabase/client"
 import Image from "next/image"
 
 interface OrderLineItem extends NewOrderItem {
     product_name: string
     product_image: string
+    variant_id?: string
+    variant_sku?: string
 }
 
 export default function NewOrderPage() {
@@ -42,21 +47,44 @@ export default function NewOrderPage() {
     })
 
     const [items, setItems] = useState<OrderLineItem[]>([])
+    const [selectedProduct, setSelectedProduct] = useState<typeof products[0] | null>(null)
+    const [showVariantsDialog, setShowVariantsDialog] = useState(false)
 
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
-    const addProduct = (product: typeof products[0]) => {
-        // Check if product already in list
-        const existingIndex = items.findIndex(item => item.product_id === product.id)
+    // Fetch variants for selected product
+    const [productVariants, setProductVariants] = useState<any[]>([])
+    const [loadingVariants, setLoadingVariants] = useState(false)
+
+    const handleProductClick = async (product: typeof products[0]) => {
+        setSelectedProduct(product)
+        setLoadingVariants(true)
+
+        // Fetch variants
+        const { data: variants } = await supabase
+            .from('product_variants')
+            .select('*')
+            .eq('product_id', product.id)
+
+        if (variants && variants.length > 0) {
+            setProductVariants(variants)
+            setShowVariantsDialog(true)
+        } else {
+            // No variants, add product directly
+            addProductWithoutVariant(product)
+        }
+        setLoadingVariants(false)
+    }
+
+    const addProductWithoutVariant = (product: typeof products[0]) => {
+        const existingIndex = items.findIndex(item => item.product_id === product.id && !item.variant_id)
         if (existingIndex >= 0) {
-            // Increase quantity
             const updated = [...items]
             updated[existingIndex].quantity += 1
             setItems(updated)
         } else {
-            // Add new item
             setItems([...items, {
                 product_id: product.id,
                 product_name: product.name,
@@ -67,6 +95,31 @@ export default function NewOrderPage() {
         }
         setShowProductSearch(false)
         setSearchQuery("")
+    }
+
+    const addProductWithVariant = (variant: any) => {
+        if (!selectedProduct) return
+
+        const existingIndex = items.findIndex(item => item.variant_id === variant.id)
+        if (existingIndex >= 0) {
+            const updated = [...items]
+            updated[existingIndex].quantity += 1
+            setItems(updated)
+        } else {
+            setItems([...items, {
+                product_id: selectedProduct.id,
+                variant_id: variant.id,
+                product_name: `${selectedProduct.name}${variant.sku ? ` - ${variant.sku}` : ''}`,
+                product_image: variant.images?.[0] || selectedProduct.images?.[0] || "",
+                variant_sku: variant.sku || 'N/A',
+                quantity: 1,
+                price_at_purchase: variant.price || selectedProduct.price,
+            }])
+        }
+        setShowVariantsDialog(false)
+        setShowProductSearch(false)
+        setSearchQuery("")
+        setSelectedProduct(null)
     }
 
     const updateItemQuantity = (index: number, quantity: number) => {
@@ -132,6 +185,7 @@ export default function NewOrderPage() {
                 },
                 items.map(item => ({
                     product_id: item.product_id,
+                    variant_id: item.variant_id,
                     quantity: item.quantity,
                     price_at_purchase: item.price_at_purchase,
                 }))
@@ -323,7 +377,7 @@ export default function NewOrderPage() {
                                                     <div
                                                         key={product.id}
                                                         className="flex items-center gap-3 p-2 bg-white rounded border hover:bg-gray-50 cursor-pointer"
-                                                        onClick={() => addProduct(product)}
+                                                        onClick={() => handleProductClick(product)}
                                                     >
                                                         {product.images?.[0] && (
                                                             <div className="relative w-10 h-10 rounded overflow-hidden flex-shrink-0">
@@ -370,6 +424,9 @@ export default function NewOrderPage() {
                                                 )}
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-medium truncate">{item.product_name}</p>
+                                                    {item.variant_sku && (
+                                                        <p className="text-xs text-gray-500">SKU: {item.variant_sku}</p>
+                                                    )}
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-20">
@@ -410,6 +467,87 @@ export default function NewOrderPage() {
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* Variants Dialog */}
+                        <Dialog open={showVariantsDialog} onOpenChange={setShowVariantsDialog}>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle>
+                                        Select Variant for {selectedProduct?.name}
+                                    </DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-3 max-h-96 overflow-y-auto">
+                                    {loadingVariants ? (
+                                        <div className="flex items-center justify-center py-8">
+                                            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                                        </div>
+                                    ) : productVariants.length === 0 ? (
+                                        <p className="text-center text-gray-500 py-8">
+                                            No variants found
+                                        </p>
+                                    ) : (
+                                        productVariants.map((variant) => {
+                                            const stockQty = variant.stock_quantity || 0
+                                            const isLowStock = stockQty > 0 && stockQty <= 5
+                                            const isOutOfStock = stockQty <= 0
+
+                                            return (
+                                                <div
+                                                    key={variant.id}
+                                                    className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${isOutOfStock
+                                                            ? 'bg-gray-50 cursor-not-allowed opacity-60'
+                                                            : 'hover:bg-gray-50 cursor-pointer hover:border-primary'
+                                                        }`}
+                                                    onClick={() => !isOutOfStock && addProductWithVariant(variant)}
+                                                >
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-semibold text-base">{variant.sku || 'No SKU'}</p>
+                                                            {isOutOfStock && (
+                                                                <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full font-medium">
+                                                                    Out of Stock
+                                                                </span>
+                                                            )}
+                                                            {isLowStock && (
+                                                                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">
+                                                                    Low Stock
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm text-gray-600 mt-1">
+                                                            Stock: <span className={`font-medium ${isOutOfStock ? 'text-red-600' : isLowStock ? 'text-orange-600' : 'text-green-600'
+                                                                }`}>{stockQty}</span> {variant.unit_type || 'units'}
+                                                        </p>
+                                                        {variant.pricing_type === 'per_unit' && variant.unit_type && (
+                                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                                Sold by {variant.unit_type}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-right mx-4">
+                                                        <p className="text-lg font-bold text-primary">
+                                                            ${(variant.price || 0).toFixed(2)}
+                                                        </p>
+                                                        {variant.pricing_type === 'per_unit' && (
+                                                            <p className="text-xs text-gray-500">per {variant.unit_type}</p>
+                                                        )}
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        disabled={isOutOfStock}
+                                                    >
+                                                        <Plus className="h-4 w-4 mr-1" />
+                                                        Add
+                                                    </Button>
+                                                </div>
+                                            )
+                                        })
+                                    )}
+                                </div>
+                            </DialogContent>
+                        </Dialog>
 
                         {/* Notes */}
                         <Card>

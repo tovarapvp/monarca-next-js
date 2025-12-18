@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useRef } from "react"
-import { useRouter } from "@/i18n/navigation"
+import { useState, useRef, useEffect } from "react"
+import { useRouter, useParams } from "next/navigation"
 import { Link } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,17 +10,33 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { createProduct } from "@/hooks/use-products"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useProduct, updateProduct } from "@/hooks/use-products"
 import { useCategories } from "@/hooks/use-categories"
-import { ArrowLeft, Upload, Loader2, X, Plus } from "lucide-react"
+import { ArrowLeft, Upload, Loader2, X, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { uploadMultipleImages } from "@/lib/image-upload"
 import Image from "next/image"
 import { CreateCategoryDialog } from "@/components/admin/create-category-dialog"
+import { SimpleVariantTable } from "@/components/admin/simple-variant-table"
 import { AdvancedProductVariantsSection } from "@/components/admin/advanced-product-variants-section"
-import { createProductOption, createOptionValue, createProductVariant } from "@/hooks/use-product-variants"
+import {
+    useProductOptions,
+    useProductVariants,
+    createProductOption,
+    createOptionValue,
+    createProductVariant,
+    deleteProductOptionsAndVariants,
+} from "@/hooks/use-product-variants"
 import { useTranslations } from "next-intl"
-import { SimpleVariantTable, SimpleVariant } from "@/components/admin/simple-variant-table"
+
+interface SimpleVariant {
+    sku: string
+    description: string
+    price: number
+    useBasePrice: boolean
+    stock: number
+}
 
 interface NewOption {
     name: string
@@ -42,9 +58,16 @@ interface NewVariant {
     isAvailable: boolean
 }
 
-export default function NewProduct() {
+export default function EditProduct() {
+    const params = useParams()
+    const productId = params.id as string
     const t = useTranslations('admin.products')
     const tCommon = useTranslations('common')
+
+    const { product, loading, error } = useProduct(productId)
+    const { options: existingOptions } = useProductOptions(productId)
+    const { variants: existingVariants } = useProductVariants(productId)
+
     const [formData, setFormData] = useState({
         name: "",
         description: "",
@@ -64,24 +87,136 @@ export default function NewProduct() {
         min_quantity: "1",
         max_quantity: "",
     })
+
     const [imageFiles, setImageFiles] = useState<File[]>([])
     const [imagePreviews, setImagePreviews] = useState<string[]>([])
+    const [existingImages, setExistingImages] = useState<string[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [isUploadingImages, setIsUploadingImages] = useState(false)
+    const [simpleVariants, setSimpleVariants] = useState<SimpleVariant[]>([])
     const [productOptions, setProductOptions] = useState<NewOption[]>([])
     const [productVariants, setProductVariants] = useState<NewVariant[]>([])
     const [variantMode, setVariantMode] = useState<'simple' | 'advanced'>('simple')
-    const [simpleVariants, setSimpleVariants] = useState<SimpleVariant[]>([])
+    const [dataLoaded, setDataLoaded] = useState(false)
+
     const fileInputRef = useRef<HTMLInputElement>(null)
     const router = useRouter()
     const { toast } = useToast()
     const { categories, loading: categoriesLoading, refetch: refetchCategories } = useCategories()
 
+    // Load product data into form
+    useEffect(() => {
+        if (product && !dataLoaded) {
+            // Find category id from slug if product.category is a slug
+            let categoryValue = product.category || ""
+
+            // If categories are loaded, try to find by slug or id
+            if (categories.length > 0 && product.category) {
+                const foundCat = categories.find(c => c.slug === product.category || c.id === product.category)
+                if (foundCat) {
+                    categoryValue = foundCat.id
+                }
+            }
+
+            setFormData({
+                name: product.name,
+                description: product.description || "",
+                price: product.price?.toString() || "",
+                category: categoryValue,
+                material: product.material || "",
+                color: product.color || "",
+                size: product.size || "",
+                tags: Array.isArray(product.tags) ? product.tags.join(", ") : (product.tags || ""),
+                weight_grams: product.weight_grams?.toString() || "",
+                care_instructions: product.care_instructions || "",
+                shipping_info: product.shipping_info || "",
+                in_stock: product.in_stock ?? true,
+                pricing_type: (product.pricing_type === "per_unit" ? "per_unit" : "fixed") as "fixed" | "per_unit",
+                unit_type: product.unit_type || "",
+                price_per_unit: product.price_per_unit?.toString() || "",
+                min_quantity: product.min_quantity?.toString() || "1",
+                max_quantity: product.max_quantity?.toString() || "",
+            })
+
+            // Load existing images
+            if (product.images && product.images.length > 0) {
+                setExistingImages(product.images)
+            }
+
+            setDataLoaded(true)
+        }
+    }, [product, categories, dataLoaded])
+
+    // Load existing options/variants into state
+    useEffect(() => {
+        if (existingOptions && existingOptions.length > 0 && dataLoaded) {
+            const isSimpleVariant = existingOptions.length === 1 && existingOptions[0].name === "Variante"
+
+            if (isSimpleVariant) {
+                setVariantMode('simple')
+
+                if (existingVariants && existingVariants.length > 0) {
+                    setSimpleVariants(existingVariants.map(v => {
+                        const optionValue = v.option_values?.[0]?.value || v.sku || ""
+                        const parts = optionValue.split(' ')
+                        const sku = parts[0] || v.sku || ""
+                        const description = parts.slice(1).join(' ') || ""
+
+                        return {
+                            sku: sku,
+                            description: description,
+                            price: v.price,
+                            useBasePrice: false,
+                            stock: v.stock_quantity || 0
+                        }
+                    }))
+                }
+            } else {
+                setVariantMode('advanced')
+
+                setProductOptions(existingOptions.map(opt => ({
+                    name: opt.name,
+                    values: opt.values?.map(v => v.value) || []
+                })))
+
+                if (existingVariants && existingVariants.length > 0) {
+                    setProductVariants(existingVariants.map(v => ({
+                        optionValues: v.option_values?.map((ov: any) => ({
+                            optionName: ov.option_name || ov.optionName,
+                            value: ov.value
+                        })) || [],
+                        sku: v.sku || "",
+                        price: v.price,
+                        compareAtPrice: v.compare_at_price,
+                        pricingType: v.pricing_type || 'fixed',
+                        unitType: v.unit_type,
+                        pricePerUnit: v.price_per_unit,
+                        minQuantity: v.min_quantity || 1,
+                        maxQuantity: v.max_quantity,
+                        stockQuantity: v.stock_quantity || 0,
+                        trackInventory: v.track_inventory ?? true,
+                        isAvailable: v.is_available ?? true,
+                    })))
+                }
+            }
+        }
+    }, [existingOptions, existingVariants, dataLoaded])
+
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || [])
         if (files.length === 0) return
 
-        const newFiles = [...imageFiles, ...files].slice(0, 5)
+        const totalImages = existingImages.length + imageFiles.length + files.length
+        if (totalImages > 5) {
+            toast({
+                title: "Too many images",
+                description: "You can upload a maximum of 5 images",
+                variant: "destructive",
+            })
+            return
+        }
+
+        const newFiles = [...imageFiles, ...files]
         setImageFiles(newFiles)
 
         const previews = newFiles.map(file => URL.createObjectURL(file))
@@ -89,18 +224,29 @@ export default function NewProduct() {
     }
 
     const removeImage = (index: number) => {
-        const newFiles = imageFiles.filter((_, i) => i !== index)
-        const newPreviews = imagePreviews.filter((_, i) => i !== index)
+        // Check if it's an existing image or new image
+        if (index < existingImages.length) {
+            // Remove from existing images
+            setExistingImages(existingImages.filter((_, i) => i !== index))
+        } else {
+            // Remove from new images
+            const newImageIndex = index - existingImages.length
+            const newFiles = imageFiles.filter((_, i) => i !== newImageIndex)
+            const newPreviews = imagePreviews.filter((_, i) => i !== newImageIndex)
 
-        URL.revokeObjectURL(imagePreviews[index])
+            if (imagePreviews[newImageIndex]) {
+                URL.revokeObjectURL(imagePreviews[newImageIndex])
+            }
 
-        setImageFiles(newFiles)
-        setImagePreviews(newPreviews)
+            setImageFiles(newFiles)
+            setImagePreviews(newPreviews)
+        }
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
+        // Form validation
         if (!formData.name.trim()) {
             toast({
                 title: tCommon('error'),
@@ -119,6 +265,7 @@ export default function NewProduct() {
             return
         }
 
+        // Validate pricing based on pricing type
         if (formData.pricing_type === "fixed") {
             if (!formData.price || parseFloat(formData.price) <= 0) {
                 toast({
@@ -132,7 +279,7 @@ export default function NewProduct() {
             if (!formData.unit_type) {
                 toast({
                     title: tCommon('error'),
-                    description: "Unit type required",
+                    description: "Please select a unit type for per-unit pricing",
                     variant: "destructive",
                 })
                 return
@@ -150,21 +297,24 @@ export default function NewProduct() {
         setIsLoading(true)
 
         try {
-            let imageUrls: string[] = []
+            let uploadedImageUrls: string[] = []
             if (imageFiles.length > 0) {
                 setIsUploadingImages(true)
                 toast({
                     title: tCommon('loading'),
-                    description: "Uploading images...",
+                    description: "Compressing and uploading your images",
                 })
-                imageUrls = await uploadMultipleImages(imageFiles, 'product-images', 'products')
+                uploadedImageUrls = await uploadMultipleImages(imageFiles, 'product-images', 'products')
             }
 
+            const allImages = [...existingImages, ...uploadedImageUrls]
+
+            // Parse tags from comma-separated string
             const tagsArray = formData.tags
                 ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
                 : null
 
-            const product = await createProduct({
+            await updateProduct(productId, {
                 name: formData.name,
                 description: formData.description || null,
                 price: formData.price ? parseFloat(formData.price) : (formData.pricing_type === "per_unit" && formData.price_per_unit ? parseFloat(formData.price_per_unit) : 0),
@@ -174,9 +324,8 @@ export default function NewProduct() {
                 size: formData.size || null,
                 tags: tagsArray,
                 weight_grams: formData.weight_grams ? parseFloat(formData.weight_grams) : null,
-                images: imageUrls.length > 0 ? imageUrls : null,
+                images: allImages.length > 0 ? allImages : null,
                 in_stock: formData.in_stock,
-                details: null,
                 care_instructions: formData.care_instructions || null,
                 shipping_info: formData.shipping_info || null,
                 pricing_type: formData.pricing_type,
@@ -186,14 +335,14 @@ export default function NewProduct() {
                     : null,
                 min_quantity: formData.min_quantity ? parseFloat(formData.min_quantity) : 1,
                 max_quantity: formData.max_quantity ? parseFloat(formData.max_quantity) : null,
-                has_variants: productVariants.length > 0,
-                created_at: new Date().toISOString(),
             })
 
             // Update variants based on mode
-            if (variantMode === 'simple' && simpleVariants.length > 0 && product) {
+            if (variantMode === 'simple' && simpleVariants.length > 0) {
                 // Simple mode: Create a single option called "Variante"
-                const variantOption = await createProductOption(product.id, "Variante", 0)
+                await deleteProductOptionsAndVariants(productId)
+
+                const variantOption = await createProductOption(productId, "Variante", 0)
 
                 // Create option values and variants
                 for (const simpleVariant of simpleVariants) {
@@ -204,7 +353,7 @@ export default function NewProduct() {
                     const optionValue = await createOptionValue(variantOption.id, variantName, simpleVariants.indexOf(simpleVariant))
 
                     // Create variant with the simple variant data
-                    await createProductVariant(product.id, {
+                    await createProductVariant(productId, {
                         sku: simpleVariant.sku,
                         price: simpleVariant.useBasePrice ? parseFloat(formData.price) || 0 : simpleVariant.price,
                         compare_at_price: null,
@@ -218,12 +367,14 @@ export default function NewProduct() {
                         is_available: simpleVariant.stock > 0,
                     }, [optionValue.id])
                 }
-            } else if (variantMode === 'advanced' && productOptions.length > 0 && productVariants.length > 0 && product) {
+            } else if (variantMode === 'advanced' && productOptions.length > 0 && productVariants.length > 0) {
                 // Advanced mode: Create options and variants
+                await deleteProductOptionsAndVariants(productId)
+
                 const optionMap = new Map<string, { optionId: string; valueIds: Map<string, string> }>()
 
                 for (const option of productOptions) {
-                    const createdOption = await createProductOption(product.id, option.name, productOptions.indexOf(option))
+                    const createdOption = await createProductOption(productId, option.name, productOptions.indexOf(option))
 
                     const valueIds = new Map<string, string>()
                     for (const value of option.values) {
@@ -248,7 +399,7 @@ export default function NewProduct() {
                         }
                     }
 
-                    await createProductVariant(product.id, {
+                    await createProductVariant(productId, {
                         sku: variant.sku,
                         price: variant.price,
                         compare_at_price: variant.compareAtPrice,
@@ -266,21 +417,48 @@ export default function NewProduct() {
 
             toast({
                 title: tCommon('success'),
-                description: t('saveProduct'),
+                description: "The changes have been saved successfully.",
             })
 
             router.push("/admin/products")
-        } catch (error) {
-            console.error("Error creating product:", error)
+        } catch (err) {
+            console.error("Error updating product:", err)
             toast({
                 title: tCommon('error'),
-                description: tCommon('error'),
+                description: "There was an error updating the product. Please try again.",
                 variant: "destructive",
             })
         } finally {
             setIsLoading(false)
             setIsUploadingImages(false)
         }
+    }
+
+    if (error) {
+        return (
+            <div className="p-8">
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                        Error loading product: {error.message}
+                    </AlertDescription>
+                </Alert>
+                <Link href="/admin/products">
+                    <Button variant="outline" className="mt-4">
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        {tCommon('goBack')}
+                    </Button>
+                </Link>
+            </div>
+        )
+    }
+
+    if (loading || !product) {
+        return (
+            <div className="p-8 flex items-center justify-center py-12">
+                <Loader2 className="h-12 w-12 animate-spin text-gray-400" />
+            </div>
+        )
     }
 
     return (
@@ -293,14 +471,16 @@ export default function NewProduct() {
                     </Button>
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-serif font-bold text-gray-800">{t('addProduct')}</h1>
-                    <p className="text-gray-600 mt-1">{t('title')}</p>
+                    <h1 className="text-3xl font-serif font-bold text-gray-800">{t('editProduct')}</h1>
+                    <p className="text-gray-600 mt-1">Update product information and details</p>
                 </div>
             </div>
 
             <form onSubmit={handleSubmit}>
                 <div className="grid gap-6 lg:grid-cols-3">
+                    {/* Main Column - 2/3 width */}
                     <div className="lg:col-span-2 space-y-6">
+                        {/* Basic Information */}
                         <Card>
                             <CardHeader>
                                 <CardTitle>{t('productName')}</CardTitle>
@@ -370,6 +550,60 @@ export default function NewProduct() {
                             </CardContent>
                         </Card>
 
+                        {/* Product Attributes */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Product Attributes</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid gap-4 md:grid-cols-3">
+                                    <div>
+                                        <Label htmlFor="material">Material</Label>
+                                        <Input
+                                            id="material"
+                                            value={formData.material}
+                                            onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                                            placeholder="e.g., 18k Gold"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="color">Color</Label>
+                                        <Input
+                                            id="color"
+                                            value={formData.color}
+                                            onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                                            placeholder="e.g., Rose Gold"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="size">Size</Label>
+                                        <Input
+                                            id="size"
+                                            value={formData.size}
+                                            onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                                            placeholder="e.g., Medium, 45cm"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="weight">Weight (grams)</Label>
+                                    <Input
+                                        id="weight"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={formData.weight_grams}
+                                        onChange={(e) => setFormData({ ...formData, weight_grams: e.target.value })}
+                                        placeholder="e.g., 8.5"
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Pricing Configuration */}
                         <Card>
                             <CardHeader>
                                 <CardTitle>{t('price')}</CardTitle>
@@ -388,7 +622,7 @@ export default function NewProduct() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="fixed">Fixed Price</SelectItem>
-                                            <SelectItem value="per_unit">Price Per Unit</SelectItem>
+                                            <SelectItem value="per_unit">Price Per Unit (for ribbons, fabrics, etc.)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -409,6 +643,8 @@ export default function NewProduct() {
                                     </div>
                                 ) : (
                                     <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                        <p className="text-sm text-blue-800 font-medium">Per-Unit Pricing Configuration</p>
+
                                         <div className="grid gap-4 md:grid-cols-2">
                                             <div>
                                                 <Label htmlFor="unit_type">Unit Type *</Label>
@@ -440,6 +676,50 @@ export default function NewProduct() {
                                                     placeholder="0.00"
                                                 />
                                             </div>
+                                        </div>
+
+                                        <div className="grid gap-4 md:grid-cols-2">
+                                            <div>
+                                                <Label htmlFor="min_quantity">Minimum Quantity</Label>
+                                                <Input
+                                                    id="min_quantity"
+                                                    type="number"
+                                                    step="0.1"
+                                                    min="0"
+                                                    value={formData.min_quantity}
+                                                    onChange={(e) => setFormData({ ...formData, min_quantity: e.target.value })}
+                                                    placeholder="1"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <Label htmlFor="max_quantity">Maximum Quantity (optional)</Label>
+                                                <Input
+                                                    id="max_quantity"
+                                                    type="number"
+                                                    step="0.1"
+                                                    min="0"
+                                                    value={formData.max_quantity}
+                                                    onChange={(e) => setFormData({ ...formData, max_quantity: e.target.value })}
+                                                    placeholder="Unlimited"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <Label htmlFor="base_price">Base Display Price (optional)</Label>
+                                            <Input
+                                                id="base_price"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={formData.price}
+                                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                                placeholder="Optional starting price"
+                                            />
+                                            <p className="text-xs text-blue-700 mt-1">
+                                                This will be shown as a starting price. Actual price calculated based on quantity.
+                                            </p>
                                         </div>
                                     </div>
                                 )}
@@ -494,9 +774,41 @@ export default function NewProduct() {
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* Additional Information */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Additional Information</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div>
+                                    <Label htmlFor="care">Care Instructions</Label>
+                                    <Textarea
+                                        id="care"
+                                        value={formData.care_instructions}
+                                        onChange={(e) => setFormData({ ...formData, care_instructions: e.target.value })}
+                                        placeholder="How to care for this product..."
+                                        rows={3}
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="shipping">Shipping Information</Label>
+                                    <Textarea
+                                        id="shipping"
+                                        value={formData.shipping_info}
+                                        onChange={(e) => setFormData({ ...formData, shipping_info: e.target.value })}
+                                        placeholder="Shipping details..."
+                                        rows={2}
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
 
+                    {/* Sidebar - 1/3 width */}
                     <div className="space-y-6">
+                        {/* Images */}
                         <Card>
                             <CardHeader>
                                 <CardTitle>{t('images')}</CardTitle>
@@ -516,20 +828,25 @@ export default function NewProduct() {
                                         variant="outline"
                                         className="w-full"
                                         onClick={() => fileInputRef.current?.click()}
-                                        disabled={imageFiles.length >= 5}
+                                        disabled={(existingImages.length + imageFiles.length) >= 5}
                                     >
                                         <Upload className="h-4 w-4 mr-2" />
-                                        {imageFiles.length === 0 ? "Upload Images" : `Add More (${imageFiles.length}/5)`}
+                                        {(existingImages.length + imageFiles.length) === 0 ? "Upload Images" : `Add More (${existingImages.length + imageFiles.length}/5)`}
                                     </Button>
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                        Images will be compressed to WebP
+                                    </p>
                                 </div>
 
-                                {imagePreviews.length > 0 && (
+                                {/* Combined image display - existing + new */}
+                                {(existingImages.length + imagePreviews.length) > 0 && (
                                     <div className="grid grid-cols-2 gap-2">
-                                        {imagePreviews.map((preview, index) => (
-                                            <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
+                                        {/* Existing images */}
+                                        {existingImages.map((url, index) => (
+                                            <div key={`existing-${index}`} className="relative aspect-square rounded-lg overflow-hidden border">
                                                 <Image
-                                                    src={preview}
-                                                    alt={`Preview ${index + 1}`}
+                                                    src={url}
+                                                    alt={`Image ${index + 1}`}
                                                     fill
                                                     className="object-cover"
                                                 />
@@ -542,11 +859,30 @@ export default function NewProduct() {
                                                 </button>
                                             </div>
                                         ))}
+                                        {/* New images */}
+                                        {imagePreviews.map((preview, index) => (
+                                            <div key={`new-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-blue-300">
+                                                <Image
+                                                    src={preview}
+                                                    alt={`New ${index + 1}`}
+                                                    fill
+                                                    className="object-cover"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeImage(existingImages.length + index)}
+                                                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
 
+                        {/* Stock Status */}
                         <Card>
                             <CardHeader>
                                 <CardTitle>{t('stock')}</CardTitle>
@@ -565,11 +901,12 @@ export default function NewProduct() {
                             </CardContent>
                         </Card>
 
+                        {/* Submit Button */}
                         <Button type="submit" disabled={isLoading || isUploadingImages} className="w-full">
                             {isLoading ? (
                                 <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    {tCommon('loading')}
+                                    {isUploadingImages ? "Uploading images..." : "Saving changes..."}
                                 </>
                             ) : (
                                 t('saveProduct')

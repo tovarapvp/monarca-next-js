@@ -1,3 +1,5 @@
+"use client"
+
 import { Link } from "@/i18n/navigation"
 import { Button } from "@/components/ui/button"
 import { Home, ArrowLeft } from "lucide-react"

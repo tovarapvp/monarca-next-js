@@ -14,6 +14,7 @@ import { supabase } from "@/lib/supabase/client"
 import type { Tables } from "@/lib/types/database"
 import { useProductOptions, useProductVariants, ProductVariant, ProductOption } from "@/hooks/use-product-variants"
 import { VariantSelector } from "@/components/product/variant-selector"
+import { VariantList } from "@/components/product/variant-list"
 
 type Product = Tables<'products'>
 
@@ -255,6 +256,57 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     })
   }
 
+  // Handle adding multiple variants to cart from VariantList
+  const handleAddVariantsToCart = (selectedVariants: { variant: ProductVariant; quantity: number }[]) => {
+    const savedCart = localStorage.getItem("monarca-cart")
+    let cartItems: CartItem[] = savedCart ? JSON.parse(savedCart) : []
+
+    selectedVariants.forEach(({ variant, quantity }) => {
+      const finalPrice = variant.pricing_type === 'per_unit' && variant.price_per_unit
+        ? variant.price_per_unit
+        : variant.price
+
+      const unitType = variant.unit_type ? variant.unit_type : undefined
+      const isPerUnit = variant.pricing_type === 'per_unit'
+
+      // Build variant description
+      const variantDescription = variant.option_values
+        ?.map((ov: any) => ov.value)
+        .join(' ') || variant.sku
+
+      const cartItemId = `${product.id}-${variant.id}`
+      const existingItemIndex = cartItems.findIndex((item) => item.id === cartItemId)
+
+      if (existingItemIndex > -1) {
+        cartItems[existingItemIndex].quantity += quantity
+      } else {
+        cartItems.push({
+          id: cartItemId,
+          productId: product.id,
+          productVariantId: variant.id,
+          name: product.name,
+          price: finalPrice,
+          quantity,
+          image: variant.images?.[0] || (product.images && product.images[0]) || "/placeholder.svg",
+          variant: { name: "Variante", value: variantDescription },
+          unitType,
+          isPerUnit,
+        })
+      }
+    })
+
+    localStorage.setItem("monarca-cart", JSON.stringify(cartItems))
+    const count = cartItems.reduce((acc, item) => acc + (item.isPerUnit ? 1 : item.quantity), 0)
+    setCartCount(count)
+    window.dispatchEvent(new CustomEvent("cart-updated"))
+
+    const totalItems = selectedVariants.reduce((sum, sv) => sum + sv.quantity, 0)
+    toast({
+      title: "Añadido al carrito",
+      description: `${totalItems} variante(s) agregadas al carrito.`,
+    })
+  }
+
   const handleWhatsAppOrder = () => {
     const price = product.pricing_type === "per_unit" && product.price_per_unit
       ? product.price_per_unit * quantity
@@ -359,97 +411,185 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               )}
             </div>
 
-            {/* Product Variants Selector */}
-            {/* ALWAYS render to maintain consistent hook count */}
-            <VariantSelector
-              options={options}
-              variants={variants}
-              onVariantSelect={handleVariantSelect}
-            />
+            {/* Product Variants Display */}
+            {/* Check if this is a simple variant product (has "Variante" option) */}
+            {hasSkuVariants && options.length === 1 && options[0].name === "Variante" ? (
+              /* Simple Variants - Show as list */
+              <VariantList
+                productName={product.name}
+                variants={variants}
+                onAddToCart={handleAddVariantsToCart}
+                disabled={false}
+              />
+            ) : hasSkuVariants ? (
+              /* Advanced Variants - Show selector */
+              <>
+                <VariantSelector
+                  options={options}
+                  variants={variants}
+                  onVariantSelect={handleVariantSelect}
+                />
 
-            {/* Stock Status - only show when variant is selected */}
-            {hasSkuVariants && selectedVariant && getStockStatus() && (
-              <div className={`text-sm font-medium ${getStockStatus()?.available ? 'text-green-600' : 'text-red-600'}`}>
-                {getStockStatus()?.text}
-              </div>
-            )}
+                {/* Stock Status - only show when variant is selected */}
+                {selectedVariant && getStockStatus() && (
+                  <div className={`text-sm font-medium ${getStockStatus()?.available ? 'text-green-600' : 'text-red-600'}`}>
+                    {getStockStatus()?.text}
+                  </div>
+                )}
 
-            {/* Quantity selector for per-unit products */}
-            {product.pricing_type === "per_unit" && (
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <Label htmlFor="quantity" className="text-sm font-medium text-blue-900">
-                  Quantity ({product.unit_type}s)
-                </Label>
-                <div className="flex items-center gap-3 mt-2">
+                {/* Quantity selector for per-unit products */}
+                {product.pricing_type === "per_unit" && (
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <Label htmlFor="quantity" className="text-sm font-medium text-blue-900">
+                      Quantity ({product.unit_type}s)
+                    </Label>
+                    <div className="flex items-center gap-3 mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setQuantity(Math.max((product.min_quantity || 1), quantity - 0.5))}
+                      >
+                        -
+                      </Button>
+                      <input
+                        id="quantity"
+                        type="number"
+                        step={product.unit_type === "meter" || product.unit_type === "yard" ? "0.5" : "1"}
+                        min={product.min_quantity || 1}
+                        max={product.max_quantity || undefined}
+                        value={quantity}
+                        onChange={(e) => setQuantity(parseFloat(e.target.value) || 1)}
+                        className="w-20 text-center border rounded px-2 py-1"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setQuantity(quantity + 0.5)}
+                      >
+                        +
+                      </Button>
+                      <span className="text-sm text-blue-700">
+                        {product.min_quantity && `Min: ${product.min_quantity}`}
+                        {product.max_quantity && ` • Max: ${product.max_quantity}`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons for advanced variants */}
+                <div className="space-y-4">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setQuantity(Math.max((product.min_quantity || 1), quantity - 0.5))}
+                    size="lg"
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+                    onClick={handleAddToCart}
+                    disabled={!canAddToCart()}
                   >
-                    -
+                    <ShoppingCart className="h-5 w-5" />
+                    {!selectedVariant
+                      ? "Select Options"
+                      : !canAddToCart()
+                        ? "Out of Stock"
+                        : "Add to Cart"}
                   </Button>
-                  <input
-                    id="quantity"
-                    type="number"
-                    step={product.unit_type === "meter" || product.unit_type === "yard" ? "0.5" : "1"}
-                    min={product.min_quantity || 1}
-                    max={product.max_quantity || undefined}
-                    value={quantity}
-                    onChange={(e) => setQuantity(parseFloat(e.target.value) || 1)}
-                    className="w-20 text-center border rounded px-2 py-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setQuantity(quantity + 0.5)}
-                  >
-                    +
-                  </Button>
-                  <span className="text-sm text-blue-700">
-                    {product.min_quantity && `Min: ${product.min_quantity}`}
-                    {product.max_quantity && ` • Max: ${product.max_quantity}`}
-                  </span>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="flex-1 gap-2 bg-transparent hover:bg-green-50 hover:border-green-500 hover:text-green-700"
+                      onClick={handleWhatsAppOrder}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Inquire via WhatsApp
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="flex-1 gap-2 bg-transparent hover:bg-blue-50 hover:border-blue-500 hover:text-blue-700"
+                      onClick={handleEmailOrder}
+                    >
+                      <Mail className="h-4 w-4" />
+                      Inquire via Email
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              </>
+            ) : (
+              /* No variants - Simple product */
+              <>
+                {/* Quantity selector for per-unit products */}
+                {product.pricing_type === "per_unit" && (
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <Label htmlFor="quantity" className="text-sm font-medium text-blue-900">
+                      Quantity ({product.unit_type}s)
+                    </Label>
+                    <div className="flex items-center gap-3 mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setQuantity(Math.max((product.min_quantity || 1), quantity - 0.5))}
+                      >
+                        -
+                      </Button>
+                      <input
+                        id="quantity"
+                        type="number"
+                        step={product.unit_type === "meter" || product.unit_type === "yard" ? "0.5" : "1"}
+                        min={product.min_quantity || 1}
+                        max={product.max_quantity || undefined}
+                        value={quantity}
+                        onChange={(e) => setQuantity(parseFloat(e.target.value) || 1)}
+                        className="w-20 text-center border rounded px-2 py-1"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setQuantity(quantity + 0.5)}
+                      >
+                        +
+                      </Button>
+                      <span className="text-sm text-blue-700">
+                        {product.min_quantity && `Min: ${product.min_quantity}`}
+                        {product.max_quantity && ` • Max: ${product.max_quantity}`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons for simple product */}
+                <div className="space-y-4">
+                  <Button
+                    size="lg"
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+                    onClick={handleAddToCart}
+                  >
+                    <ShoppingCart className="h-5 w-5" />
+                    Add to Cart
+                  </Button>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="flex-1 gap-2 bg-transparent hover:bg-green-50 hover:border-green-500 hover:text-green-700"
+                      onClick={handleWhatsAppOrder}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Inquire via WhatsApp
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="flex-1 gap-2 bg-transparent hover:bg-blue-50 hover:border-blue-500 hover:text-blue-700"
+                      onClick={handleEmailOrder}
+                    >
+                      <Mail className="h-4 w-4" />
+                      Inquire via Email
+                    </Button>
+                  </div>
+                </div>
+              </>
             )}
-
-            {/* Action Buttons */}
-            <div className="space-y-4">
-              <Button
-                size="lg"
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
-                onClick={handleAddToCart}
-                disabled={!canAddToCart()}
-              >
-                <ShoppingCart className="h-5 w-5" />
-                {hasSkuVariants && !selectedVariant
-                  ? "Select Options"
-                  : !canAddToCart()
-                    ? "Out of Stock"
-                    : "Add to Cart"}
-              </Button>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="flex-1 gap-2 bg-transparent hover:bg-green-50 hover:border-green-500 hover:text-green-700"
-                  onClick={handleWhatsAppOrder}
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  Inquire via WhatsApp
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="flex-1 gap-2 bg-transparent hover:bg-blue-50 hover:border-blue-500 hover:text-blue-700"
-                  onClick={handleEmailOrder}
-                >
-                  <Mail className="h-4 w-4" />
-                  Inquire via Email
-                </Button>
-              </div>
-            </div>
 
             {/* Product Details Tabs */}
             <Tabs defaultValue="details" className="w-full">

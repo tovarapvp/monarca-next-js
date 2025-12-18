@@ -324,24 +324,26 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 </nav>
 
                 {/* Main Product Section */}
-                <div className="grid gap-12 lg:grid-cols-2 mb-16">
+                <div className="grid gap-8 lg:grid-cols-2 mb-16">
                     {/* Left Column - Image Gallery */}
                     <div className="space-y-4">
-                        <div className="relative aspect-square overflow-hidden rounded-lg bg-muted group">
+                        <div className="relative aspect-square overflow-hidden rounded-2xl bg-muted group border shadow-lg">
                             <img
                                 src={images[selectedImageIndex] || "/placeholder.svg"}
                                 alt={product.name}
-                                className="h-full w-full object-cover transition-transform duration-300 lg:group-hover:scale-125"
+                                className="h-full w-full object-cover transition-transform duration-500 lg:group-hover:scale-110"
                             />
                         </div>
 
                         {images.length > 1 && (
-                            <div className="flex gap-2 overflow-x-auto pb-2">
+                            <div className="flex gap-3 overflow-x-auto pb-2">
                                 {images.map((image, index) => (
                                     <button
                                         key={index}
                                         onClick={() => setSelectedImageIndex(index)}
-                                        className={`aspect-square w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${selectedImageIndex === index ? "border-primary" : "border-border hover:border-primary/50"
+                                        className={`aspect-square w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-300 ${selectedImageIndex === index
+                                            ? "border-primary ring-2 ring-primary/20 shadow-md scale-105"
+                                            : "border-border hover:border-primary/50 hover:shadow-sm"
                                             }`}
                                     >
                                         <img
@@ -357,18 +359,20 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
                     {/* Right Column - Product Info */}
                     <div className="space-y-6">
-                        <div>
-                            <h1 className="text-4xl font-serif font-bold text-foreground mb-4">{product.name}</h1>
-                            <p className="text-3xl font-bold text-primary mb-6">
-                                ${displayPrice.toFixed(2)}
+                        <div className="bg-card p-6 rounded-xl shadow-sm border">
+                            <h1 className="text-4xl font-serif font-bold text-foreground mb-3">{product.name}</h1>
+                            <div className="flex items-baseline gap-3 mb-4">
+                                <p className="text-4xl font-bold text-primary">
+                                    ${displayPrice.toFixed(2)}
+                                </p>
                                 {isPerUnitPricing && unitTypeDisplay && (
-                                    <span className="text-lg text-muted-foreground ml-2">
-                                        (${pricePerUnitDisplay} {t('product.perUnit', { unit: unitTypeDisplay })})
+                                    <span className="text-base text-muted-foreground">
+                                        ${pricePerUnitDisplay} {t('product.perUnit', { unit: unitTypeDisplay })}
                                     </span>
                                 )}
-                            </p>
+                            </div>
                             {product.description && (
-                                <p className="text-lg text-muted-foreground leading-relaxed">{product.description}</p>
+                                <p className="text-base text-muted-foreground leading-relaxed">{product.description}</p>
                             )}
                         </div>
 

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useRef, useEffect, use } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useRef, useEffect } from "react"
+import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast"
 import { uploadMultipleImages } from "@/lib/image-upload"
 import Image from "next/image"
 import { CreateCategoryDialog } from "@/components/admin/create-category-dialog"
+import { SimpleVariantTable } from "@/components/admin/simple-variant-table"
 import { AdvancedProductVariantsSection } from "@/components/admin/advanced-product-variants-section"
 import {
   useProductOptions,
@@ -26,11 +27,19 @@ import {
   createOptionValue,
   createProductVariant,
   deleteProductOptionsAndVariants,
-  ProductOption
 } from "@/hooks/use-product-variants"
+
+interface SimpleVariant {
+  sku: string
+  description: string
+  price: number
+  useBasePrice: boolean
+  stock: number
+}
 
 interface NewOption {
   name: string
+  values: string[]
 }
 
 interface NewVariant {
@@ -48,11 +57,13 @@ interface NewVariant {
   isAvailable: boolean
 }
 
-export default function EditProduct({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params)
-  const { product, loading, error } = useProduct(resolvedParams.id)
-  const { options: existingOptions } = useProductOptions(resolvedParams.id)
-  const { variants: existingVariants } = useProductVariants(resolvedParams.id)
+export default function EditProduct() {
+  const params = useParams()
+  const productId = params.id as string
+
+  const { product, loading, error } = useProduct(productId)
+  const { options: existingOptions } = useProductOptions(productId)
+  const { variants: existingVariants } = useProductVariants(productId)
 
   const [formData, setFormData] = useState({
     name: "",
@@ -79,8 +90,11 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
   const [existingImages, setExistingImages] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isUploadingImages, setIsUploadingImages] = useState(false)
+  const [simpleVariants, setSimpleVariants] = useState<SimpleVariant[]>([])
   const [productOptions, setProductOptions] = useState<NewOption[]>([])
   const [productVariants, setProductVariants] = useState<NewVariant[]>([])
+  const [variantMode, setVariantMode] = useState<'simple' | 'advanced'>('simple')
+  const [dataLoaded, setDataLoaded] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -89,12 +103,23 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
 
   // Load product data into form
   useEffect(() => {
-    if (product) {
+    if (product && !dataLoaded) {
+      // Find category id from slug if product.category is a slug
+      let categoryValue = product.category || ""
+
+      // If categories are loaded, try to find by slug or id
+      if (categories.length > 0 && product.category) {
+        const foundCat = categories.find(c => c.slug === product.category || c.id === product.category)
+        if (foundCat) {
+          categoryValue = foundCat.id
+        }
+      }
+
       setFormData({
         name: product.name,
         description: product.description || "",
-        price: product.price.toString(),
-        category: product.category || "",
+        price: product.price?.toString() || "",
+        category: categoryValue,
         material: product.material || "",
         color: product.color || "",
         size: product.size || "",
@@ -114,41 +139,65 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
       if (product.images && product.images.length > 0) {
         setExistingImages(product.images)
       }
-    }
-  }, [product])
 
-  // Load existing options into state
-  useEffect(() => {
-    if (existingOptions.length > 0) {
-      setProductOptions(existingOptions.map(opt => ({
-        name: opt.name,
-        values: opt.values?.map(v => v.value) || []
-      })))
+      setDataLoaded(true)
     }
-  }, [existingOptions])
+  }, [product, categories, dataLoaded])
 
-  // Load existing variants into state
+  // Load existing options/variants into state
   useEffect(() => {
-    if (existingVariants.length > 0) {
-      setProductVariants(existingVariants.map(v => ({
-        optionValues: v.option_values?.map((ov: any) => ({
-          optionName: ov.option_name || ov.optionName,
-          value: ov.value
-        })) || [],
-        sku: v.sku || "",
-        price: v.price,
-        compareAtPrice: v.compare_at_price,
-        pricingType: v.pricing_type || 'fixed',
-        unitType: v.unit_type,
-        pricePerUnit: v.price_per_unit,
-        minQuantity: v.min_quantity || 1,
-        maxQuantity: v.max_quantity,
-        stockQuantity: v.stock_quantity || 0,
-        trackInventory: v.track_inventory ?? true,
-        isAvailable: v.is_available ?? true,
-      })))
+    if (existingOptions && existingOptions.length > 0 && dataLoaded) {
+      const isSimpleVariant = existingOptions.length === 1 && existingOptions[0].name === "Variante"
+
+      if (isSimpleVariant) {
+        setVariantMode('simple')
+
+        if (existingVariants && existingVariants.length > 0) {
+          setSimpleVariants(existingVariants.map(v => {
+            const optionValue = v.option_values?.[0]?.value || v.sku || ""
+            const parts = optionValue.split(' ')
+            const sku = parts[0] || v.sku || ""
+            const description = parts.slice(1).join(' ') || ""
+
+            return {
+              sku: sku,
+              description: description,
+              price: v.price,
+              useBasePrice: false,
+              stock: v.stock_quantity || 0
+            }
+          }))
+        }
+      } else {
+        setVariantMode('advanced')
+
+        setProductOptions(existingOptions.map(opt => ({
+          name: opt.name,
+          values: opt.values?.map(v => v.value) || []
+        })))
+
+        if (existingVariants && existingVariants.length > 0) {
+          setProductVariants(existingVariants.map(v => ({
+            optionValues: v.option_values?.map((ov: any) => ({
+              optionName: ov.option_name || ov.optionName,
+              value: ov.value
+            })) || [],
+            sku: v.sku || "",
+            price: v.price,
+            compareAtPrice: v.compare_at_price,
+            pricingType: v.pricing_type || 'fixed',
+            unitType: v.unit_type,
+            pricePerUnit: v.price_per_unit,
+            minQuantity: v.min_quantity || 1,
+            maxQuantity: v.max_quantity,
+            stockQuantity: v.stock_quantity || 0,
+            trackInventory: v.track_inventory ?? true,
+            isAvailable: v.is_available ?? true,
+          })))
+        }
+      }
     }
-  }, [existingVariants])
+  }, [existingOptions, existingVariants, dataLoaded])
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -171,18 +220,24 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
     setImagePreviews(previews)
   }
 
-  const removeNewImage = (index: number) => {
-    const newFiles = imageFiles.filter((_, i) => i !== index)
-    const newPreviews = imagePreviews.filter((_, i) => i !== index)
+  const removeImage = (index: number) => {
+    // Check if it's an existing image or new image
+    if (index < existingImages.length) {
+      // Remove from existing images
+      setExistingImages(existingImages.filter((_, i) => i !== index))
+    } else {
+      // Remove from new images
+      const newImageIndex = index - existingImages.length
+      const newFiles = imageFiles.filter((_, i) => i !== newImageIndex)
+      const newPreviews = imagePreviews.filter((_, i) => i !== newImageIndex)
 
-    URL.revokeObjectURL(imagePreviews[index])
+      if (imagePreviews[newImageIndex]) {
+        URL.revokeObjectURL(imagePreviews[newImageIndex])
+      }
 
-    setImageFiles(newFiles)
-    setImagePreviews(newPreviews)
-  }
-
-  const removeExistingImage = (index: number) => {
-    setExistingImages(existingImages.filter((_, i) => i !== index))
+      setImageFiles(newFiles)
+      setImagePreviews(newPreviews)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -239,31 +294,37 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
     setIsLoading(true)
 
     try {
-      // Upload new images if any
       let uploadedImageUrls: string[] = []
       if (imageFiles.length > 0) {
         setIsUploadingImages(true)
+        toast({
+          title: "Uploading images...",
+          description: "Compressing and uploading your images",
+        })
         uploadedImageUrls = await uploadMultipleImages(imageFiles, 'product-images', 'products')
-        setIsUploadingImages(false)
       }
 
-      // Combine existing and new images
       const allImages = [...existingImages, ...uploadedImageUrls]
 
-      // Update product
-      await updateProduct(resolvedParams.id, {
+      // Parse tags from comma-separated string
+      const tagsArray = formData.tags
+        ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+        : null
+
+      await updateProduct(productId, {
         name: formData.name,
         description: formData.description || null,
-        price: parseFloat(formData.price) || 0,
+        price: formData.price ? parseFloat(formData.price) : (formData.pricing_type === "per_unit" && formData.price_per_unit ? parseFloat(formData.price_per_unit) : 0),
         category: formData.category || null,
         material: formData.material || null,
         color: formData.color || null,
         size: formData.size || null,
-        tags: formData.tags ? formData.tags.split(",").map(t => t.trim()).filter(Boolean) : null,
+        tags: tagsArray,
         weight_grams: formData.weight_grams ? parseFloat(formData.weight_grams) : null,
+        images: allImages.length > 0 ? allImages : null,
+        in_stock: formData.in_stock,
         care_instructions: formData.care_instructions || null,
         shipping_info: formData.shipping_info || null,
-        in_stock: formData.in_stock,
         pricing_type: formData.pricing_type,
         unit_type: formData.pricing_type === "per_unit" ? formData.unit_type : null,
         price_per_unit: formData.pricing_type === "per_unit" && formData.price_per_unit
@@ -271,19 +332,46 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
           : null,
         min_quantity: formData.min_quantity ? parseFloat(formData.min_quantity) : 1,
         max_quantity: formData.max_quantity ? parseFloat(formData.max_quantity) : null,
-        images: allImages,
       })
 
-      // Update options and variants if they exist
-      if (productOptions.length > 0 && productVariants.length > 0) {
-        // Delete existing options and variants first (cascade will handle values)
-        await deleteProductOptionsAndVariants(resolvedParams.id)
+      // Update variants based on mode
+      if (variantMode === 'simple' && simpleVariants.length > 0) {
+        // Simple mode: Create a single option called "Variante"
+        await deleteProductOptionsAndVariants(productId)
 
-        // Create new options and values
+        const variantOption = await createProductOption(productId, "Variante", 0)
+
+        // Create option values and variants
+        for (const simpleVariant of simpleVariants) {
+          // Create variant display name (SKU + Description)
+          const variantName = `${simpleVariant.sku} ${simpleVariant.description}`.trim()
+
+          // Create option value
+          const optionValue = await createOptionValue(variantOption.id, variantName, simpleVariants.indexOf(simpleVariant))
+
+          // Create variant with the simple variant data
+          await createProductVariant(productId, {
+            sku: simpleVariant.sku,
+            price: simpleVariant.useBasePrice ? parseFloat(formData.price) || 0 : simpleVariant.price,
+            compare_at_price: null,
+            pricing_type: 'fixed',
+            unit_type: null,
+            price_per_unit: null,
+            min_quantity: 1,
+            max_quantity: null,
+            stock_quantity: simpleVariant.stock,
+            track_inventory: true,
+            is_available: simpleVariant.stock > 0,
+          }, [optionValue.id])
+        }
+      } else if (variantMode === 'advanced' && productOptions.length > 0 && productVariants.length > 0) {
+        // Advanced mode: Create options and variants
+        await deleteProductOptionsAndVariants(productId)
+
         const optionMap = new Map<string, { optionId: string; valueIds: Map<string, string> }>()
 
         for (const option of productOptions) {
-          const createdOption = await createProductOption(resolvedParams.id, option.name, productOptions.indexOf(option))
+          const createdOption = await createProductOption(productId, option.name, productOptions.indexOf(option))
 
           const valueIds = new Map<string, string>()
           for (const value of option.values) {
@@ -308,7 +396,7 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
             }
           }
 
-          await createProductVariant(resolvedParams.id, {
+          await createProductVariant(productId, {
             sku: variant.sku,
             price: variant.price,
             compare_at_price: variant.compareAtPrice,
@@ -330,8 +418,8 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
       })
 
       router.push("/admin/products")
-    } catch (error) {
-      console.error("Error updating product:", error)
+    } catch (err) {
+      console.error("Error updating product:", err)
       toast({
         title: "Error",
         description: "There was an error updating the product. Please try again.",
@@ -372,7 +460,6 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
 
   return (
     <div className="p-8">
-      {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Link href="/admin/products">
           <Button variant="outline" size="sm">
@@ -381,15 +468,16 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-serif text-gray-800">Edit Product</h1>
-          <p className="text-gray-600">Modify the product information</p>
+          <h1 className="text-3xl font-serif font-bold text-gray-800">Edit Product</h1>
+          <p className="text-gray-600 mt-1">Update product information and details</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Information */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Main Column - 2/3 width */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Basic Information */}
             <Card>
               <CardHeader>
                 <CardTitle>Basic Information</CardTitle>
@@ -401,7 +489,7 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., Premium Silk Ribbon"
+                    placeholder="e.g., Gold Pendant Necklace"
                     required
                   />
                 </div>
@@ -412,106 +500,149 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Describe the product features and details..."
+                    placeholder="Describe the product..."
                     rows={4}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <Label htmlFor="category">Category *</Label>
-                    <div className="flex gap-2">
-                      <Select
-                        value={formData.category}
-                        onValueChange={(value) => setFormData({ ...formData, category: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.slug}>
-                              {cat.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <CreateCategoryDialog onCategoryCreated={refetchCategories} />
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="category">Category *</Label>
+                      <CreateCategoryDialog
+                        onCategoryCreated={(categoryId) => {
+                          refetchCategories()
+                          setFormData({ ...formData, category: categoryId })
+                        }}
+                      />
                     </div>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) => setFormData({ ...formData, category: value })}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={categoriesLoading ? "Loading..." : "Select category"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
-                    <Label htmlFor="tags">Tags</Label>
+                    <Label htmlFor="tags">Tags (comma-separated)</Label>
                     <Input
                       id="tags"
                       value={formData.tags}
                       onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                      placeholder="e.g., premium, silk, ribbon"
+                      placeholder="luxury, handmade, gift"
                     />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Pricing Section */}
+            {/* Product Attributes */}
             <Card>
               <CardHeader>
-                <CardTitle>Pricing</CardTitle>
+                <CardTitle>Product Attributes</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label>Pricing Type *</Label>
-                  <div className="flex items-center gap-4 mt-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        id="pricing-fixed"
-                        name="pricing_type"
-                        value="fixed"
-                        checked={formData.pricing_type === "fixed"}
-                        onChange={(e) => setFormData({ ...formData, pricing_type: e.target.value as "fixed" })}
-                        className="rounded"
-                      />
-                      <Label htmlFor="pricing-fixed" className="font-normal cursor-pointer">
-                        Fixed Price
-                      </Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        id="pricing-per-unit"
-                        name="pricing_type"
-                        value="per_unit"
-                        checked={formData.pricing_type === "per_unit"}
-                        onChange={(e) => setFormData({ ...formData, pricing_type: e.target.value as "per_unit" })}
-                        className="rounded"
-                      />
-                      <Label htmlFor="pricing-per-unit" className="font-normal cursor-pointer">
-                        Price Per Unit
-                      </Label>
-                    </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <Label htmlFor="material">Material</Label>
+                    <Input
+                      id="material"
+                      value={formData.material}
+                      onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                      placeholder="e.g., 18k Gold"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="color">Color</Label>
+                    <Input
+                      id="color"
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      placeholder="e.g., Rose Gold"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="size">Size</Label>
+                    <Input
+                      id="size"
+                      value={formData.size}
+                      onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                      placeholder="e.g., Medium, 45cm"
+                    />
                   </div>
                 </div>
 
+                <div>
+                  <Label htmlFor="weight">Weight (grams)</Label>
+                  <Input
+                    id="weight"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.weight_grams}
+                    onChange={(e) => setFormData({ ...formData, weight_grams: e.target.value })}
+                    placeholder="e.g., 8.5"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pricing Configuration */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Pricing Configuration</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="pricing_type">Pricing Type</Label>
+                  <Select
+                    value={formData.pricing_type}
+                    onValueChange={(value: "fixed" | "per_unit") =>
+                      setFormData({ ...formData, pricing_type: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">Fixed Price</SelectItem>
+                      <SelectItem value="per_unit">Price Per Unit (for ribbons, fabrics, etc.)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {formData.pricing_type === "fixed" ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="price">Price (USD) *</Label>
-                      <Input
-                        id="price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        placeholder="0.00"
-                        required={formData.pricing_type === "fixed"}
-                      />
-                    </div>
+                  <div>
+                    <Label htmlFor="price">Price (USD) *</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      placeholder="0.00"
+                      required
+                    />
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-800 font-medium">Per-Unit Pricing Configuration</p>
+
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div>
                         <Label htmlFor="unit_type">Unit Type *</Label>
                         <Select
@@ -526,17 +657,12 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
                             <SelectItem value="yard">Yard</SelectItem>
                             <SelectItem value="foot">Foot</SelectItem>
                             <SelectItem value="centimeter">Centimeter</SelectItem>
-                            <SelectItem value="inch">Inch</SelectItem>
-                            <SelectItem value="kilogram">Kilogram</SelectItem>
-                            <SelectItem value="gram">Gram</SelectItem>
-                            <SelectItem value="pound">Pound</SelectItem>
-                            <SelectItem value="liter">Liter</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
                       <div>
-                        <Label htmlFor="price_per_unit">Price Per Unit (USD) *</Label>
+                        <Label htmlFor="price_per_unit">Price Per Unit *</Label>
                         <Input
                           id="price_per_unit"
                           type="number"
@@ -545,32 +671,17 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
                           value={formData.price_per_unit}
                           onChange={(e) => setFormData({ ...formData, price_per_unit: e.target.value })}
                           placeholder="0.00"
-                          required={formData.pricing_type === "per_unit"}
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div>
-                        <Label htmlFor="price">Base Price (USD)</Label>
-                        <Input
-                          id="price"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.price}
-                          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                          placeholder="0.00"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Optional base price</p>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="min_quantity">Min Quantity</Label>
+                        <Label htmlFor="min_quantity">Minimum Quantity</Label>
                         <Input
                           id="min_quantity"
                           type="number"
-                          step="0.5"
+                          step="0.1"
                           min="0"
                           value={formData.min_quantity}
                           onChange={(e) => setFormData({ ...formData, min_quantity: e.target.value })}
@@ -579,73 +690,85 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
                       </div>
 
                       <div>
-                        <Label htmlFor="max_quantity">Max Quantity</Label>
+                        <Label htmlFor="max_quantity">Maximum Quantity (optional)</Label>
                         <Input
                           id="max_quantity"
                           type="number"
-                          step="0.5"
+                          step="0.1"
                           min="0"
                           value={formData.max_quantity}
                           onChange={(e) => setFormData({ ...formData, max_quantity: e.target.value })}
-                          placeholder="Optional"
+                          placeholder="Unlimited"
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="base_price">Base Display Price (optional)</Label>
+                      <Input
+                        id="base_price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        placeholder="Optional starting price"
+                      />
+                      <p className="text-xs text-blue-700 mt-1">
+                        This will be shown as a starting price. Actual price calculated based on quantity.
+                      </p>
                     </div>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Product Details */}
+            {/* Product Variants */}
             <Card>
               <CardHeader>
-                <CardTitle>Product Details</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Variantes del Producto</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground">Modo:</Label>
+                    <Button
+                      type="button"
+                      variant={variantMode === 'simple' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setVariantMode('simple')}
+                      disabled={isLoading}
+                    >
+                      Simple
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={variantMode === 'advanced' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setVariantMode('advanced')}
+                      disabled={isLoading}
+                    >
+                      Avanzado
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="material">Material</Label>
-                    <Input
-                      id="material"
-                      value={formData.material}
-                      onChange={(e) => setFormData({ ...formData, material: e.target.value })}
-                      placeholder="e.g., Silk, Cotton"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="color">Color</Label>
-                    <Input
-                      id="color"
-                      value={formData.color}
-                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                      placeholder="e.g., Red, Blue"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="size">Size</Label>
-                    <Input
-                      id="size"
-                      value={formData.size}
-                      onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                      placeholder="e.g., 2.5cm width"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="weight_grams">Weight (grams)</Label>
-                  <Input
-                    id="weight_grams"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.weight_grams}
-                    onChange={(e) => setFormData({ ...formData, weight_grams: e.target.value })}
-                    placeholder="0"
+              <CardContent>
+                {variantMode === 'simple' ? (
+                  <SimpleVariantTable
+                    variants={simpleVariants}
+                    setVariants={setSimpleVariants}
+                    basePrice={parseFloat(formData.price) || 0}
+                    disabled={isLoading}
                   />
-                </div>
+                ) : (
+                  <AdvancedProductVariantsSection
+                    options={productOptions}
+                    setOptions={setProductOptions}
+                    variants={productVariants}
+                    setVariants={setProductVariants}
+                    basePrice={parseFloat(formData.price) || 0}
+                    disabled={isLoading}
+                  />
+                )}
               </CardContent>
             </Card>
 
@@ -656,9 +779,9 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="care_instructions">Care Instructions</Label>
+                  <Label htmlFor="care">Care Instructions</Label>
                   <Textarea
-                    id="care_instructions"
+                    id="care"
                     value={formData.care_instructions}
                     onChange={(e) => setFormData({ ...formData, care_instructions: e.target.value })}
                     placeholder="How to care for this product..."
@@ -667,157 +790,125 @@ export default function EditProduct({ params }: { params: Promise<{ id: string }
                 </div>
 
                 <div>
-                  <Label htmlFor="shipping_info">Shipping Information</Label>
+                  <Label htmlFor="shipping">Shipping Information</Label>
                   <Textarea
-                    id="shipping_info"
+                    id="shipping"
                     value={formData.shipping_info}
                     onChange={(e) => setFormData({ ...formData, shipping_info: e.target.value })}
-                    placeholder="Shipping details and estimated delivery time..."
-                    rows={3}
+                    placeholder="Shipping details..."
+                    rows={2}
                   />
                 </div>
               </CardContent>
             </Card>
-
-            {/* Product Variants */}
-            <AdvancedProductVariantsSection
-              options={productOptions}
-              setOptions={setProductOptions}
-              variants={productVariants}
-              setVariants={setProductVariants}
-              basePrice={parseFloat(formData.price) || 0}
-              disabled={isLoading}
-            />
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar - 1/3 width */}
           <div className="space-y-6">
-            {/* Product Images */}
+            {/* Images */}
             <Card>
               <CardHeader>
                 <CardTitle>Product Images</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Existing Images */}
-                {existingImages.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="text-sm text-gray-600">Current Images</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {existingImages.map((url, index) => (
-                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
-                          <Image
-                            src={url}
-                            alt={`Product image ${index + 1}`}
-                            fill
-                            className="object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeExistingImage(index)}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                            disabled={isLoading}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={(existingImages.length + imageFiles.length) >= 5}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {(existingImages.length + imageFiles.length) === 0 ? "Upload Images" : `Add More (${existingImages.length + imageFiles.length}/5)`}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Images will be compressed to WebP
+                  </p>
+                </div>
 
-                {/* New Images Preview */}
-                {imagePreviews.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="text-sm text-gray-600">New Images</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {imagePreviews.map((preview, index) => (
-                        <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-blue-300">
-                          <Image
-                            src={preview}
-                            alt={`New image ${index + 1}`}
-                            fill
-                            className="object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeNewImage(index)}
-                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                            disabled={isLoading}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Upload Button */}
-                {(existingImages.length + imageFiles.length) < 5 && (
-                  <div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageSelect}
-                      className="hidden"
-                      disabled={isLoading}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full"
-                      disabled={isLoading}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Add Images ({existingImages.length + imageFiles.length}/5)
-                    </Button>
-                    <p className="text-xs text-gray-500 mt-2">
-                      PNG, JPG up to 10MB each
-                    </p>
+                {/* Combined image display - existing + new */}
+                {(existingImages.length + imagePreviews.length) > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Existing images */}
+                    {existingImages.map((url, index) => (
+                      <div key={`existing-${index}`} className="relative aspect-square rounded-lg overflow-hidden border">
+                        <Image
+                          src={url}
+                          alt={`Image ${index + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {/* New images */}
+                    {imagePreviews.map((preview, index) => (
+                      <div key={`new-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-blue-300">
+                        <Image
+                          src={preview}
+                          alt={`New ${index + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(existingImages.length + index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Product Status */}
+            {/* Stock Status */}
             <Card>
               <CardHeader>
-                <CardTitle>Product Status</CardTitle>
+                <CardTitle>Availability</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="in_stock">Product in stock</Label>
+                  <Label htmlFor="in_stock" className="cursor-pointer">
+                    Product is in stock
+                  </Label>
                   <Switch
                     id="in_stock"
                     checked={formData.in_stock}
                     onCheckedChange={(checked) => setFormData({ ...formData, in_stock: checked })}
-                    disabled={isLoading}
                   />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Action Buttons */}
-            <div className="flex gap-4">
-              <Link href="/admin/products" className="flex-1">
-                <Button type="button" variant="outline" className="w-full" disabled={isLoading}>
-                  Cancel
-                </Button>
-              </Link>
-              <Button type="submit" disabled={isLoading || isUploadingImages} className="flex-1">
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {isUploadingImages ? "Uploading..." : "Saving..."}
-                  </>
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
-            </div>
+            {/* Submit Button */}
+            <Button type="submit" disabled={isLoading || isUploadingImages} className="w-full">
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {isUploadingImages ? "Uploading images..." : "Saving changes..."}
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
           </div>
         </div>
       </form>
